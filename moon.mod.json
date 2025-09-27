@@ -1,9 +1,21 @@
 {
   "name": "SuYiTao-SYT/CyberScavenger",
-  "version": "0.1.0",
-  "readme": "README.mbt.md",
+  "deps": {
+    "Milky2018/selene": {
+      "path": "../selene/selene-core"
+    },
+    "Milky2018/selene-canvas": {
+      "path": "../selene/selene-canvas"
+    },
+    "Kaida-Amethyst/math": "0.1.20"
+  },
+  "readme": "README.md",
   "repository": "",
   "license": "Apache-2.0",
-  "keywords": [],
-  "description": ""
+  "keywords": [
+    "Game"
+  ],
+  "description": "",
+  "source": "src",
+  "preferred-target": "js"
 }
