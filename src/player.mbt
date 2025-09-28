@@ -79,9 +79,17 @@ fn path_history_system(_backend: &@system.Backend) -> Unit {
 }
 
 /// 系统：实现贪吃蛇式的跟随，根据历史轨迹直接设置车厢位置。
+
 pub fn train_snake_follow_system(_backend: &@system.Backend) -> Unit {
-  // 1. 从火车头的下一节车厢开始遍历
-  let mut current_car_opt = if player_head.val is Some(h) { train_cars.get(h)?.next } else { None }
+  // 从第一节车厢开始，遍历整个火车链条
+  let mut current_car_opt: Option[@system.Entity] = None
+  if player_head.val is Some(h) {
+    if train_cars.get(h) is Some(head_data) {
+      current_car_opt = head_data.next
+    }
+  }
+
+  // 追踪我们正在为第几节车厢计算位置 (第一节是1，第二节是2...)
   let mut car_index = 1
 
   while current_car_opt is Some(car_entity) {
@@ -90,38 +98,49 @@ pub fn train_snake_follow_system(_backend: &@system.Backend) -> Unit {
         let path = leader_history.points
         if path.length() < 1 { continue }
 
-        // 2. 计算这节车厢与【火车头】的理想距离
-        let desired_distance = car_index.to_double() * TRAIN_SPACING
+        // 【核心】这节车厢的目标，是离火车头 (不是它的直接领袖) car_index * TRAIN_SPACING 的距离
+        let desired_distance_from_head = car_index.to_double() * TRAIN_SPACING
         
-        // 3. 沿着【火车头】的轨迹，向后回溯，通过插值找到那个精确的目标点
-        let head_path = if player_head.val is Some(h) { path_histories.get(h)?.points } else { [] }
-        if head_path.length() > 1 {
-            let mut target_pos = head_path[head_path.length() - 1]
-            let mut distance_travelled = 0.0
-            for i = head_path.length() - 2; i >= 0; i = i - 1 {
-                let p_new = head_path[i + 1]
-                let p_old = head_path[i]
-                let segment_length = p_new.distance_to(p_old)
+        // 沿着【火车头】的轨迹，向回搜索那个精确的点
+        let head_path_opt = if player_head.val is Some(h) { path_histories.get(h) } else { None }
+        if head_path_opt is Some(head_history) {
+            let head_path = head_history.points
+            if head_path.length() > 1 {
+                let mut target_pos = head_path[head_path.length() - 1]
+                let mut distance_travelled_backwards = 0.0
 
-                if (distance_travelled + segment_length) >= desired_distance {
-                    let needed = desired_distance - distance_travelled
-                    let ratio = if segment_length == 0.0 { 0.0 } else { needed / segment_length }
-                    target_pos = vec2d_lerp(p_new, p_old, ratio)
-                    break
+                for i = head_path.length() - 2; i >= 0; i = i - 1 {
+                    let p_new = head_path[i + 1]
+                    let p_old = head_path[i]
+                    let segment_length = p_new.distance_to(p_old)
+
+                    if (distance_travelled_backwards + segment_length) >= desired_distance_from_head {
+                        let distance_needed_on_this_segment = desired_distance_from_head - distance_travelled_backwards
+                        
+                        // 【核心修正】使用我们自己的 vec2d_lerp 函数
+                        let ratio = if segment_length == 0.0 { 0.0 } else { distance_needed_on_this_segment / segment_length }
+                        target_pos = vec2d_lerp(p_new, p_old, ratio)
+                        break
+                    }
+                    distance_travelled_backwards += segment_length
                 }
-                distance_travelled += segment_length
+                
+                // 【核心】直接将车厢的位置“瞬移”到计算出的目标点
+                @position.positions.set(car_entity, target_pos)
             }
-            // 4. 直接将车厢的位置“瞬移”到目标点
-            @position.positions.set(car_entity, target_pos)
         }
       }
     }
+    
     // 移动到链表的下一个节点
     car_index += 1
-    current_car_opt = if train_cars.get(car_entity) is Some(car_data) { car_data.next } else { None }
+    if train_cars.get(car_entity) is Some(car_data) {
+      current_car_opt = car_data.next
+    } else {
+      current_car_opt = None
+    }
   }
 }
-
 /// 系统：自动管理新加入的玩家单位，将它们连接到火车尾部。
 pub fn player_train_management_system(_backend: &@system.Backend) -> Unit {
   for unit, team in teams {

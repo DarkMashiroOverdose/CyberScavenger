@@ -49,18 +49,12 @@ fn cleanup_system(_backend: &@system.Backend) -> Unit {
         @system.Entity::destroy(health.bar_bg_entity)
         @system.Entity::destroy(health.bar_fg_entity)
       }
-      if unit_to_selection_box.get(dead_unit) is Some(box) {
-        @system.Entity::destroy(box)
-      }
 
       // 从所有渲染相关的 Map 中移除组件
       @sprite.sprites.remove(dead_unit)
       if healths.get(dead_unit) is Some(health) {
         @sprite.sprites.remove(health.bar_bg_entity)
         @sprite.sprites.remove(health.bar_fg_entity)
-      }
-      if unit_to_selection_box.get(dead_unit) is Some(box) {
-        @sprite.sprites.remove(box)
       }
 
       // 从所有逻辑相关的 Map 中移除组件
@@ -69,7 +63,6 @@ fn cleanup_system(_backend: &@system.Backend) -> Unit {
       teams.remove(dead_unit)
       destinations.remove(dead_unit)
       attack_targets.remove(dead_unit)
-      unit_to_selection_box.remove(dead_unit)
       @position.positions.remove(dead_unit)
       @velocity.velocities.remove(dead_unit)
       train_cars.remove(dead_unit) // 移除 TrainCar 组件
