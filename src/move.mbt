@@ -1,3 +1,16 @@
+/// 用速度计算移动位置的系统
+fn apply_velocity_system(_backend: &@system.Backend) -> Unit {
+  for entity in @velocity.velocities.keys() {
+    if @position.positions.get(entity) is Some(pos) {
+      if @velocity.velocities.get(entity) is Some(vel) {
+        let new_pos = pos.0 + vel.0
+        @position.positions.set(entity, new_pos)
+      }
+    }
+  }
+}
+
+
 ///--------------------
 ///    敌人移动系统
 ///--------------------
