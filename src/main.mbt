@@ -4,13 +4,15 @@
 // ---------------------------------
 fn main {
   @system.App::new(@canvas.CanvasBackend::new())
-    .with_canvas_width(800.0)
-    .with_canvas_height(600.0)
+    .with_canvas_width(1280.0)
+    .with_canvas_height(720.0)
     .with_fps(60)
-    .add_system(init_game, schedule=@system.Schedule::Startup)
-    
+    .add_system(init_game, schedule=@system.Schedule::Startup)    
+    // 注册UI逻辑更新
+    .add_system(button_system, schedule=@system.Schedule::Update)
+    .add_system(update_ui_system, schedule=@system.Schedule::Update)
     //游戏运行
-    .add_system(update_game_world_system, schedule=@system.Schedule::Update)
+    .add_system(update_logic_system, schedule=@system.Schedule::Update)
     
     .add_system(@system.advanced_key_system, schedule=@system.Schedule::Update)
     .add_system(@system.advanced_mouse_system, schedule=@system.Schedule::Update)
@@ -42,8 +44,20 @@ pub fn pause_toggle_system(_backend: &@system.Backend) -> Unit {
     }
   }
 }
-
-// --- 游戏世界总管系统 ---
+// 游戏逻辑总管系统
+fn update_logic_system(backend: &@system.Backend) -> Unit {
+  // 检查当前的UI状态
+  match current_ui_state.val {
+    // 只有当我们在 InGame 状态时
+    UIState::InGame => {
+      // 才执行游戏世界的更新
+      // 假设您有这样一个总的更新函数
+      update_game_world_system(backend) 
+    }
+    // 在主菜单、设置等其他任何界面，我们什么都不做，游戏世界自然就“暂停”了
+    _ => ()
+  }
+}
 
 // 这是所有“可暂停”的游戏逻辑系统的总入口
 pub fn update_game_world_system(backend: &@system.Backend) -> Unit {
@@ -106,6 +120,10 @@ fn init_game(backend: &@system.Backend) -> Unit {
 
   spawn_timer.val = INITIAL_SPAWN_INTERVAL
   wave_count.val = 0
+
+  setup_main_menu_ui()
+  is_paused.val = false
+
   let _ = add_new_orange_square(@math.Vec2D(350.0, 500.0))
   let _ = add_new_orange_triangle(@math.Vec2D(350.0, 500.0))
   let _ = add_new_orange_circle(@math.Vec2D(350.0, 500.0))
@@ -118,7 +136,7 @@ fn init_game(backend: &@system.Backend) -> Unit {
 
 fn add_map() -> Unit {
   let map_entity = @system.Entity::new()
-  @position.positions.set(map_entity, @math.Vec2D(-5.0, -5.0))
+  @position.positions.set(map_entity, @math.Vec2D(-2.0, -2.0))
   //let map_picture = @sprite.Picture::new(
   //  @math.Vec2D(1048.0, 768.0), "assets/gray_map.png")
   //let map_sprite = @sprite.Sprite::from_picture(map_picture, 0)
@@ -130,7 +148,7 @@ fn add_map() -> Unit {
   @position.positions.set(background_entity, @math.Vec2D::zero())
 
   let background_picture = @sprite.Picture::new(
-    @math.Vec2D(1965, 1085),
+    @math.Vec2D(1975, 1095),
     "assets/gfx/background_tile.png",
     repeat=@system.RepeatMode::Repeat,
   )
