@@ -19,7 +19,7 @@ fn add_new_grunt(pos: @math.Vec2D) -> Unit {
   let new_unit = @system.Entity::new()
   @position.positions.set(new_unit, pos)
   movement_stats.set(new_unit, { speed: 1.5 })
-  sizes.set(new_unit, { radius: 12.0 })
+  sizes.set(new_unit, { radius: 20.0 })
 
   // 用 rect 来模拟胶囊形状
   let shape = @sprite.ColoredShape::new(@sprite.Shape::rect(20.0, 30.0, 10.0), @sprite.DrawStyle::fill("#FF7A5A"))
@@ -27,13 +27,13 @@ fn add_new_grunt(pos: @math.Vec2D) -> Unit {
   @sprite.sprites.set(new_unit, sprite)
 
   let (bar_bg, bar_fg) = attach_health_bar()
-  healths.set(new_unit, { current: 50.0, max: 50.0, bar_bg_entity: bar_bg, bar_fg_entity: bar_fg })
+  healths.set(new_unit, { current: 8.0, max: 8.0, bar_bg_entity: bar_bg, bar_fg_entity: bar_fg })
   teams.set(new_unit, Team::Enemy)
 
   combat_stats.set(
   new_unit, { 
     attack_range: 40.0,
-    on_hit_effects: [OnHitEffect::DealDamage(8.0, None)], 
+    on_hit_effects: [OnHitEffect::DealDamage(1.0, None)], 
     attack_cooldown: 1.0, 
     current_cooldown: 0.0, 
     aggro_range: 500.0,
@@ -51,19 +51,19 @@ fn add_new_tank_enemy(pos: @math.Vec2D) -> Unit {
   let new_unit = @system.Entity::new()
   @position.positions.set(new_unit, pos)
   movement_stats.set(new_unit, { speed: 0.8 })
-  sizes.set(new_unit, { radius: 25.0 })
+  sizes.set(new_unit, { radius: 30.0 })
 
   let shape = @sprite.ColoredShape::new(@sprite.Shape::circle(25.0), @sprite.DrawStyle::fill("#D92A2A"))
   let sprite = @sprite.Sprite::from_shape(shape, 100)
   @sprite.sprites.set(new_unit, sprite)
 
   let (bar_bg, bar_fg) = attach_health_bar()
-  healths.set(new_unit, { current: 300.0, max: 300.0, bar_bg_entity: bar_bg, bar_fg_entity: bar_fg })
+  healths.set(new_unit, { current: 30.0, max: 30.0, bar_bg_entity: bar_bg, bar_fg_entity: bar_fg })
   teams.set(new_unit, Team::Enemy)
 
   combat_stats.set(new_unit, { 
     attack_range: 50.0,
-    on_hit_effects: [OnHitEffect::DealDamage(12.0, Some(VFX_Type::MeleeSlash))],
+    on_hit_effects: [OnHitEffect::DealDamage(1.0, Some(VFX_Type::MeleeSlash))],
     attack_cooldown: 2.5,
     current_cooldown: 0.0, 
     aggro_range: 500.0,
@@ -89,12 +89,12 @@ fn add_new_archer(pos: @math.Vec2D) -> Unit {
   @sprite.sprites.set(new_unit, sprite)
 
   let (bar_bg, bar_fg) = attach_health_bar()
-  healths.set(new_unit, { current: 60.0, max: 60.0, bar_bg_entity: bar_bg, bar_fg_entity: bar_fg }) 
+  healths.set(new_unit, { current: 8.0, max: 8.0, bar_bg_entity: bar_bg, bar_fg_entity: bar_fg }) 
   teams.set(new_unit, Team::Enemy)
 
   combat_stats.set(new_unit, { 
     attack_range: 250.0, 
-    on_hit_effects: [OnHitEffect::DealDamage(15.0, None)], 
+    on_hit_effects: [OnHitEffect::DealDamage(1.0, None)], 
     attack_cooldown: 1.8, 
     current_cooldown: 0.0, 
     aggro_range: 500.0,
