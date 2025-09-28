@@ -40,8 +40,9 @@ fn add_new_grunt(pos: @math.Vec2D) -> Unit {
     attack_type: AttackType::Melee,
     aoe_radius: 0.0,
     crit_rate: 0.0,
-    on_hit_vfx: VFX_Type::MeleeSlash,
+    attack_cast_vfx: None,
     area_effect_vfx: None,
+    attack_sfx: Some(PlayerShoot),
   })
   all_units.val.push(new_unit)
 }
@@ -69,8 +70,9 @@ fn add_new_tank_enemy(pos: @math.Vec2D) -> Unit {
     attack_type: AttackType::AoE,
     aoe_radius: 60.0,
     crit_rate: 0.05,
-    on_hit_vfx: VFX_Type::MeleeSlash,
+    attack_cast_vfx: None,
     area_effect_vfx: None,
+    attack_sfx: Some(PlayerShoot),
   })
   all_units.val.push(new_unit)
 }
@@ -99,8 +101,9 @@ fn add_new_archer(pos: @math.Vec2D) -> Unit {
     attack_type: AttackType::Bullet,
     aoe_radius: 0.0,
     crit_rate: 0.1,
-    on_hit_vfx: VFX_Type::BulletImpact, 
+    attack_cast_vfx: None,
     area_effect_vfx: None,
+    attack_sfx: Some(PlayerShoot),
   })
   all_units.val.push(new_unit)
 }
@@ -134,8 +137,9 @@ fn add_new_bomber(pos: @math.Vec2D) -> Unit {
     attack_type: AttackType::Bullet,
     aoe_radius: 0.0,
     crit_rate: 0.05,
-    on_hit_vfx: VFX_Type::BulletImpact, // 子弹本身的命中特效
-    area_effect_vfx: None, // 因为区域效果本身很短，所以不需要持续特效
+    attack_cast_vfx: None,
+    area_effect_vfx: None, 
+    attack_sfx: Some(PlayerShoot),
   })
   all_units.val.push(new_unit)
 }

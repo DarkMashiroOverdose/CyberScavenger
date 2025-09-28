@@ -6,13 +6,10 @@
 struct Projectile {
   source: @system.Entity 
   source_team: Team                     // 发射者的阵营
-  target: @system.Entity
   speed: Double
   on_hit_effects: Array[OnHitEffect]
   max_turn_rate: Double                 // 每秒最大转向角度（单位：弧度）
   navigation_constant: Double           // 比例导引常数 N
-  on_hit_vfx: VFX_Type                  // 【新增】视觉效果
-  area_effect_vfx: Option[VFX_Type]     // 【新增】视觉效果
 }
 
 /// 存储所有飞行中的抛射物
@@ -36,8 +33,6 @@ fn execute_bullet_attack(attacker: @system.Entity, target: @system.Entity, stats
       stats.on_hit_effects,
       5.0, 
       bullet_sprite,
-      stats.on_hit_vfx,
-      stats.area_effect_vfx,
     )
   }
 }
@@ -49,8 +44,6 @@ fn spawn_projectile(
   effects: Array[OnHitEffect], 
   speed: Double,
   sprite: @sprite.Sprite,
-  on_hit_vfx: VFX_Type,
-  area_effect_vfx: Option[VFX_Type]
 ) -> Unit {
   if @position.positions.get(source) is Some(source_pos) &&
      @position.positions.get(target) is Some(target_pos) {
@@ -61,13 +54,10 @@ fn spawn_projectile(
     projectiles.set(projectile_entity, {
       source: source,
       source_team: source_team,
-      target: target,
       speed: speed,
       on_hit_effects: effects,
       max_turn_rate: 0.5,
       navigation_constant: 1.5,
-      on_hit_vfx: on_hit_vfx,
-      area_effect_vfx: area_effect_vfx
     })
     let initial_direction = (target_pos.0 - source_pos.0).normalize()
     @velocity.velocities.set(projectile_entity, initial_direction.scalar_mul(speed))
@@ -143,12 +133,6 @@ pub fn projectile_system(_backend: &@system.Backend) -> Unit {
     }
   }
 }
-fn apply_projectile_effect(proj_data: Projectile, actual_hit_target: @system.Entity, hit_pos: @math.Vec2D) -> Unit {
-  println("[Log - VFX Request] An on-hit VFX of type '\{proj_data.on_hit_vfx}' was requested.")
-  vfx_requests.val.push({
-    vfx_type: proj_data.on_hit_vfx,
-    position: hit_pos,
-    rotation: 0.0,
-  })
+fn apply_projectile_effect(proj_data: Projectile, actual_hit_target: @system.Entity, _hit_pos: @math.Vec2D) -> Unit {
   apply_all_effects(proj_data.source, actual_hit_target, proj_data.on_hit_effects)
 }

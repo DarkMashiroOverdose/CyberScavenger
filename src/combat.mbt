@@ -12,8 +12,9 @@ pub struct CombatStats {
   attack_type: AttackType
   aoe_radius: Double
   crit_rate: Double
-  on_hit_vfx: VFX_Type 
+  attack_cast_vfx: Option[VFX_Type]
   area_effect_vfx: Option[VFX_Type] 
+  attack_sfx: Option[SFX_Type]
 }
 /// Map绑定单位与战斗系统
 let combat_stats: Map[@system.Entity, CombatStats] = Map::new()
@@ -83,7 +84,22 @@ fn combat_system(backend: &@system.Backend) -> Unit {
           if attacker_stats.current_cooldown <= 0.0 {
             // 重置冷却
             combat_stats.set(attacker, { ..attacker_stats, current_cooldown: attacker_stats.attack_cooldown })
-            let _ = @audio.play_audio(backend, "../assets/sfx/Shoot8.wav", volume=1., loop_=false)
+            
+            //添加攻击音效
+            if attacker_stats.attack_sfx is Some(sfx) {
+              sfx_requests.val.push({ sfx_type: sfx, position: Some(attacker_pos.0) })
+            }
+            
+            //添加攻击动画
+            if attacker_stats.attack_cast_vfx is Some(vfx) {
+              vfx_requests.val.push({
+                vfx_type: vfx,
+                position: attacker_pos.0, // 特效在攻击者身上产生
+                rotation: 0.0,
+              })
+            }
+
+
             //根据攻击类型进行调度
             match attacker_stats.attack_type {
               AttackType::Melee => {
