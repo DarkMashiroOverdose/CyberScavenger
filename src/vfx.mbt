@@ -42,7 +42,7 @@ pub let vfx_library: Map[VFX_Type, VFX_Template] = Map::new()
 // ---------------------------------
 ///一个简单的爆炸动画
 let explosion_frames: Array[@sprite.AnimationFrame] = @sprite.frames_from_atlas(
-  "assets/explosion150xA.png",
+  "assets/gfx/explosion150xA.png",
   8, 
   width=184.5,
   height=150.0,
