@@ -323,3 +323,93 @@ fn apply_knockback(source: @system.Entity, target: @system.Entity, strength: Dou
     @velocity.velocities.set(target, direction.scalar_mul(strength))
   }
 }
+
+
+/// ------------------------
+///     范围效果系统
+/// ------------------------
+
+pub struct HazardousArea {
+  source: @system.Entity
+  source_team: Team 
+  on_tick_effects: Array[OnHitEffect] 
+  radius: Double
+  remaining_duration: Double
+  tick_timer: Double
+}
+
+pub let hazardous_areas: Map[@system.Entity, HazardousArea] = Map::new()
+
+fn spawn_hazardous_area(
+    source: @system.Entity,
+    pos: @math.Vec2D, 
+    radius: Double, 
+    duration: Double, 
+    team: Team, 
+    vfx_type_opt: Option[VFX_Type],
+    tick_effects: Array[OnHitEffect] 
+) -> Unit {
+  println("[Log Spawning] Spawning hazardous area at (\{pos[X]}, \{pos[Y]})")
+  let area_entity = @system.Entity::new()
+  @position.positions.set(area_entity, pos)
+
+  if vfx_type_opt is Some(vfx_type) {
+    vfx_requests.val.push({
+      vfx_type: vfx_type,
+      position: pos,
+      rotation: 0.0,
+    })
+  }
+
+  hazardous_areas.set(area_entity, {
+    source: source,
+    source_team: team,
+    on_tick_effects: tick_effects, 
+    radius: radius,
+    remaining_duration: duration,
+    tick_timer: 1.0, 
+  })
+}
+pub fn hazardous_area_system(_backend: &@system.Backend) -> Unit {
+  let delta_seconds = 1.0 / 60.0
+  
+  for area_entity in hazardous_areas.keys() {
+    if hazardous_areas.get(area_entity) is Some(area_data) {
+      
+      let new_duration = area_data.remaining_duration - delta_seconds
+      let new_tick_timer = area_data.tick_timer - delta_seconds
+      
+      if new_duration <= 0.0 {
+        entities_to_cleanup.val.push(area_entity)
+        hazardous_areas.remove(area_entity)
+        continue
+      }
+
+      if new_tick_timer <= 0.0 {
+        if @position.positions.get(area_entity) is Some(area_pos) {
+          apply_effects_in_area(
+            area_data.source,
+            area_pos.0,
+            area_data.radius,
+            area_data.on_tick_effects, 
+            area_data.source_team
+          )
+        }
+        let final_updated_data = {
+          ..area_data,
+          remaining_duration: new_duration,
+          tick_timer: 1.0,
+        }
+        hazardous_areas.set(area_entity, final_updated_data)
+
+      } else {
+        let final_updated_data = {
+          ..area_data,
+          remaining_duration: new_duration,
+          tick_timer: new_tick_timer,
+        }
+        hazardous_areas.set(area_entity, final_updated_data)
+      }
+    }
+  }
+}
