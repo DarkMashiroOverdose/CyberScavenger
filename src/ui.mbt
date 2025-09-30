@@ -21,6 +21,8 @@ let hovered_unit_for_detail_view: Ref[Option[UnitType]] = Ref::new(None)
 // 新增 #2: 专门用来存放“详情面板”UI实体的列表
 let detail_panel_entities: Ref[Array[@system.Entity]] = Ref::new([])
 let squad_builder_grid_entities: Ref[Array[@system.Entity]] = Ref::new([])
+
+let synergy_panel_entities: Ref[Array[@system.Entity]] = Ref::new([])
 pub enum ButtonAction {
   SwitchState(UIState)
   SelectUnit(UnitType)
@@ -592,7 +594,88 @@ fn update_selected_squad_display() -> Unit {
     i = i + 1
   }
 }
+fn update_synergy_panel() -> Unit {
+  
+  for entity in synergy_panel_entities.val {
+    if @sprite.sprites.get(entity) is Some(_) { let _ = @sprite.sprites.remove(entity) }
+    @system.Entity::destroy(entity)
+  }
+  synergy_panel_entities.val = []
 
+  for entity in synergy_panel_entities.val {
+    if @sprite.sprites.get(entity) is Some(_) { let _ = @sprite.sprites.remove(entity) }
+    @system.Entity::destroy(entity)
+  }
+  synergy_panel_entities.val = []
+
+  let title = @system.Entity::new()
+  @position.positions.set(title, @math.Vec2D(100.0, 380.0))
+  let title_pic = @sprite.Picture::new(@math.Vec2D(400.0, 80.0), "assets/gui/squad/synergy/synergy_title.png")
+  let title_sprite = @sprite.Sprite::from_picture(title_pic, 1, layer=@sprite.RenderLayer::ui())
+  @sprite.sprites.set(title, title_sprite)
+  @ui.uis.set(title, @ui.Ui::new())
+  synergy_panel_entities.val.push(title)
+
+  let background_image_path = match current_synergy_filter.val {
+    Some(SynergyTag::Orange) => "assets/gui/squad/synergy/synergy_bg_orange.png"
+    Some(SynergyTag::Purple) => "assets/gui/squad/synergy/synergy_bg_purple.png"
+    Some(SynergyTag::Green)  => "assets/gui/squad/synergy/synergy_bg_green.png"
+    Some(SynergyTag::Blue)   => "assets/gui/squad/synergy/synergy_bg_blue.png"
+    None => ""
+  }
+  if background_image_path != "" {
+    let bg_light = @system.Entity::new()
+    @position.positions.set(bg_light, @math.Vec2D(37.0, 356.0))
+    let bg_light_pic = @sprite.Picture::new(@math.Vec2D(250.0, 320.0), background_image_path)
+    let bg_light_sprite = @sprite.Sprite::from_picture(bg_light_pic, -1, layer=@sprite.RenderLayer::ui())
+    @sprite.sprites.set(bg_light, bg_light_sprite)
+    @ui.uis.set(bg_light, @ui.Ui::new())
+    synergy_panel_entities.val.push(bg_light)
+  }
+
+
+
+  if current_synergy_filter.val is Some(filtered_tag) {
+    
+    if synergy_database.get(filtered_tag) is Some(synergy_info) {
+      
+      let mut count = 0
+      for unit_type in selected_squad.val {
+        if unit_definitions.get(unit_type) is Some(def) {
+          if def.color_tag == filtered_tag {
+            count = count + 1
+          }
+        }
+      }
+
+      let mut active_bonus_text = "0%"
+      for tier in synergy_info.tiers {
+        if count >= tier.count {
+          active_bonus_text = tier.bonus_text
+        }
+      }
+
+      let final_text = "\{synergy_info.name}\n\{synergy_info.description}\n\n目前队内有\{count}个单位\n\{synergy_info.state}\{active_bonus_text}"
+
+      let panel_entity = @system.Entity::new()
+      @position.positions.set(panel_entity, @math.Vec2D(60.0, 450.0)) 
+
+      let panel_layout = @system.TextLayout::new(
+        final_text,
+        font="italic 19px mplus_hzk",
+        color="white",
+        max_width=Some(200.0), 
+        align=@system.TextAlign::center(),
+        line_height=24.0,   
+      )
+      let panel_sprite = @sprite.Sprite::from_text_layout(panel_layout, 1, layer=@sprite.RenderLayer::ui())
+      
+      @sprite.sprites.set(panel_entity, panel_sprite)
+      @ui.uis.set(panel_entity, @ui.Ui::new())
+      synergy_panel_entities.val.push(panel_entity)
+    }
+  }
+}
 pub fn update_ui_system(_backend: &@system.Backend) -> Unit {
   if current_ui_state.val != prev_ui_state.val {
     if prev_ui_state.val == UIState::SquadBuilder && current_ui_state.val == UIState::InGame {
@@ -633,6 +716,7 @@ pub fn update_ui_system(_backend: &@system.Backend) -> Unit {
     update_squad_builder_grid()
     update_selected_squad_display()
     update_detail_panel() 
+    update_synergy_panel()
   }
 }
 
@@ -724,12 +808,7 @@ pub fn button_system(_backend: &@system.Backend) -> Unit {
           return
         }
         ButtonAction::SelectUnit(unit_type) => {
-          if selected_squad.val.length() < 6 {
-            selected_squad.val.push(unit_type)
-            println("【动作】: 已选择单位 \{unit_type}, 当前队伍: \{selected_squad.val}")
-          } else {
-            println("【动作】: 队伍已满！")
-          }
+          selected_squad.val.push(unit_type)
           return 
         }
         ButtonAction::DeselectUnit(index) => {
@@ -751,9 +830,9 @@ pub fn button_system(_backend: &@system.Backend) -> Unit {
         }
       }
     }
-    if !found_hovered_unit {
-      hovered_unit_for_detail_view.val = None
-    }
+  }
+  if !found_hovered_unit {
+    hovered_unit_for_detail_view.val = None
   }
 }
         
