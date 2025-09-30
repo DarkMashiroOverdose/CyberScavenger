@@ -17,6 +17,7 @@ let current_shape_filter: Ref[Option[UnitShape]] = Ref::new(None)
 let selected_unit_for_detail_view: Ref[Option[UnitType]] = Ref::new(None)
 
 let hovered_unit_for_detail_view: Ref[Option[UnitType]] = Ref::new(None)
+let sticky_unit_for_detail_view: Ref[Option[UnitType]] = Ref::new(None) 
 
 // 新增 #2: 专门用来存放“详情面板”UI实体的列表
 let detail_panel_entities: Ref[Array[@system.Entity]] = Ref::new([])
@@ -43,6 +44,7 @@ pub enum ButtonAppearance {
   FromAnimation(@sprite.Animation)
   FromText(@sprite.Text)
   FromShape(@sprite.ColoredShape, @math.Vec2D)
+  FromTextLayout(@system.TextLayout)
 }
 pub let buttons : Map[@system.Entity, Button] = Map::new()
 
@@ -266,7 +268,7 @@ fn setup_squad_builder_ui() -> Unit {
   let squad_background = @system.Entity::new()
   @position.positions.set(squad_background, @math.Vec2D(0.0, 0.0))
   let squad_background_pic = @sprite.Picture::new(@math.Vec2D(1280.0, 720.0), "assets/gui/squad/squad_background.png")
-  let squad_background_sprite = @sprite.Sprite::from_picture(squad_background_pic, 1, layer=@sprite.RenderLayer::ui())
+  let squad_background_sprite = @sprite.Sprite::from_picture(squad_background_pic, 0, layer=@sprite.RenderLayer::ui())
   @sprite.sprites.set(squad_background, squad_background_sprite)
   @ui.uis.set(squad_background, @ui.Ui::new())
   ui_entities.val.push(squad_background)
@@ -428,9 +430,21 @@ fn update_detail_panel() -> Unit {
     @system.Entity::destroy(entity)
   }
   detail_panel_entities.val = []
-
+  let unit_to_display: Option[UnitType] = 
+    match hovered_unit_for_detail_view.val {
+      Some(hovered_unit) => {
+        // 如果有单位正被悬停（瞬时），优先显示它
+        Some(hovered_unit)
+      }
+      None => {
+        // 如果没有单位被悬停，就检查有没有被点击的（常驻）
+        sticky_unit_for_detail_view.val
+      }
+    }
+  
   //检查是否有单位被选中查看详情
-  match hovered_unit_for_detail_view .val {
+  match unit_to_display {
+    
     None => {
       //如果没有单位被选中，显示默认的占位符文本
       let placeholder = @system.Entity::new()
@@ -777,6 +791,14 @@ pub fn button_system(_backend: &@system.Backend) -> Unit {
                 offset = current_sprite.offset,
               )
             }
+            ButtonAppearance::FromTextLayout(text) => {
+              @sprite.Sprite::from_text_layout(
+                text,
+                current_sprite.zindex,
+                layer = current_sprite.layer,
+                offset = current_sprite.offset,
+              )
+            }
             ButtonAppearance::FromShape(shape, offset) => {
               @sprite.Sprite::from_shape(
                 shape,
@@ -808,8 +830,10 @@ pub fn button_system(_backend: &@system.Backend) -> Unit {
           return
         }
         ButtonAction::SelectUnit(unit_type) => {
-          selected_squad.val.push(unit_type)
-          return 
+          if selected_squad.val.length() < 6 {
+            selected_squad.val.push(unit_type)
+          }
+          sticky_unit_for_detail_view.val = Some(unit_type)
         }
         ButtonAction::DeselectUnit(index) => {
           if index < selected_squad.val.length() {
