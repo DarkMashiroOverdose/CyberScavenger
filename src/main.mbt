@@ -124,15 +124,35 @@ fn init_game(backend: &@system.Backend) -> Unit {
   setup_main_menu_ui()
   is_paused.val = false
 
-  let _ = add_new_orange_square(@math.Vec2D(350.0, 500.0))
-  let _ = add_new_orange_triangle(@math.Vec2D(350.0, 500.0))
-  let _ = add_new_orange_circle(@math.Vec2D(350.0, 500.0))
-  let _ = add_new_purple_square(@math.Vec2D(350.0, 500.0))
-  let _ = add_new_green_triangle(@math.Vec2D(350.0, 500.0))
-  let _ = add_new_purple_circle(@math.Vec2D(350.0, 500.0))
+  //let _ = add_new_orange_square(@math.Vec2D(350.0, 500.0))
+  //let _ = add_new_orange_triangle(@math.Vec2D(350.0, 500.0))
+  //let _ = add_new_orange_circle(@math.Vec2D(350.0, 500.0))
+  //let _ = add_new_purple_square(@math.Vec2D(350.0, 500.0))
+  //let _ = add_new_green_triangle(@math.Vec2D(350.0, 500.0))
+  //let _ = add_new_purple_circle(@math.Vec2D(350.0, 500.0))
 
-  let _ = add_new_green_square(@math.Vec2D(350.0, 500.0))
+  //let _ = add_new_green_square(@math.Vec2D(350.0, 500.0))
 }
+fn init_game_world() -> Unit {
+    println("【主逻辑】: 初始化游戏世界...")
+    
+    // TODO: 在这里添加清理上一局游戏的代码
+    // 比如 all_units.val.clear(), 清理所有敌人、子弹等
+    
+    println("【主逻辑】: 读取已选队伍 `selected_squad` 并生成单位...")
+    println("         当前队伍是: {selected_squad.val}")
+
+    // 1. 遍历玩家在组队界面选择的单位列表 `selected_squad`
+    for unit_type_to_spawn in selected_squad.val {
+        let spawn_pos = @math.Vec2D(350.0, 500.0) // 暂时都生成在一个点
+        spawn_player_unit_by_type(unit_type_to_spawn, spawn_pos)
+    }
+
+    // TODO: 在这里添加其他游戏开始时的逻辑
+    // 比如重置分数、重置敌人生成计时器等
+    println("【主逻辑】: 单位生成完毕！")
+}
+
 
 fn add_map() -> Unit {
   let map_entity = @system.Entity::new()
