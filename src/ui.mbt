@@ -84,11 +84,15 @@ fn cleanup_ui() -> Unit {
     if @sprite.sprites.get(entity) is Some(_) { let _ = @sprite.sprites.remove(entity) }
     @system.Entity::destroy(entity)
   }
-  
+  for entity in synergy_panel_entities.val {
+    if @sprite.sprites.get(entity) is Some(_) { let _ = @sprite.sprites.remove(entity) }
+    @system.Entity::destroy(entity)
+  }
   ui_entities.val = []
   squad_display_slots.val = []
   squad_builder_unit_buttons.val = []
   detail_panel_entities.val = []
+  synergy_panel_entities.val = []
   buttons.clear()
   
   current_synergy_filter.val = Some(SynergyTag::Orange)
@@ -653,29 +657,17 @@ fn update_synergy_panel() -> Unit {
     @system.Entity::destroy(entity)
   }
   synergy_panel_entities.val = []
+  if current_synergy_filter.val is Some(filtered_tag) {
+    
+    // a. 动态决定背景图片路径
+    let background_image_path = match filtered_tag {
+      SynergyTag::Orange => "assets/gui/squad/synergy/synergy_bg_orange.png"
+      SynergyTag::Purple => "assets/gui/squad/synergy/synergy_bg_purple.png"
+      SynergyTag::Green  => "assets/gui/squad/synergy/synergy_bg_green.png"
+      SynergyTag::Blue   => "assets/gui/squad/synergy/synergy_bg_blue.png"
+    }
 
-  for entity in synergy_panel_entities.val {
-    if @sprite.sprites.get(entity) is Some(_) { let _ = @sprite.sprites.remove(entity) }
-    @system.Entity::destroy(entity)
-  }
-  synergy_panel_entities.val = []
-
-  let title = @system.Entity::new()
-  @position.positions.set(title, @math.Vec2D(100.0, 380.0))
-  let title_pic = @sprite.Picture::new(@math.Vec2D(400.0, 80.0), "assets/gui/squad/synergy/synergy_title.png")
-  let title_sprite = @sprite.Sprite::from_picture(title_pic, 1, layer=@sprite.RenderLayer::ui())
-  @sprite.sprites.set(title, title_sprite)
-  @ui.uis.set(title, @ui.Ui::new())
-  synergy_panel_entities.val.push(title)
-
-  let background_image_path = match current_synergy_filter.val {
-    Some(SynergyTag::Orange) => "assets/gui/squad/synergy/synergy_bg_orange.png"
-    Some(SynergyTag::Purple) => "assets/gui/squad/synergy/synergy_bg_purple.png"
-    Some(SynergyTag::Green)  => "assets/gui/squad/synergy/synergy_bg_green.png"
-    Some(SynergyTag::Blue)   => "assets/gui/squad/synergy/synergy_bg_blue.png"
-    None => ""
-  }
-  if background_image_path != "" {
+    // b. 创建背景
     let bg_light = @system.Entity::new()
     @position.positions.set(bg_light, @math.Vec2D(37.0, 356.0))
     let bg_light_pic = @sprite.Picture::new(@math.Vec2D(250.0, 320.0), background_image_path)
@@ -683,48 +675,57 @@ fn update_synergy_panel() -> Unit {
     @sprite.sprites.set(bg_light, bg_light_sprite)
     @ui.uis.set(bg_light, @ui.Ui::new())
     synergy_panel_entities.val.push(bg_light)
-  }
-
-
-
-  if current_synergy_filter.val is Some(filtered_tag) {
     
-    if synergy_database.get(filtered_tag) is Some(synergy_info) {
+    // c. 创建标题
+    let title = @system.Entity::new()
+    @position.positions.set(title, @math.Vec2D(100.0, 380.0))
+    let title_pic = @sprite.Picture::new(@math.Vec2D(400.0, 80.0), "assets/gui/squad/synergy/synergy_title.png")
+    let title_sprite = @sprite.Sprite::from_picture(title_pic, 1, layer=@sprite.RenderLayer::ui())
+    @sprite.sprites.set(title, title_sprite)
+    @ui.uis.set(title, @ui.Ui::new())
+    synergy_panel_entities.val.push(title)
+
+
+
+    if current_synergy_filter.val is Some(filtered_tag) {
       
-      let mut count = 0
-      for unit_type in selected_squad.val {
-        if unit_definitions.get(unit_type) is Some(def) {
-          if def.color_tag == filtered_tag {
-            count = count + 1
+      if synergy_database.get(filtered_tag) is Some(synergy_info) {
+        
+        let mut count = 0
+        for unit_type in selected_squad.val {
+          if unit_definitions.get(unit_type) is Some(def) {
+            if def.color_tag == filtered_tag {
+              count = count + 1
+            }
           }
         }
-      }
 
-      let mut active_bonus_text = "0%"
-      for tier in synergy_info.tiers {
-        if count >= tier.count {
-          active_bonus_text = tier.bonus_text
+        let mut active_bonus_text = "0%"
+        for tier in synergy_info.tiers {
+          if count >= tier.count {
+            active_bonus_text = tier.bonus_text
+          }
         }
+
+        let final_text = "\{synergy_info.name}\n\{synergy_info.description}\n\n目前队内有\{count}个单位\n\{synergy_info.state}\{active_bonus_text}"
+
+        let panel_entity = @system.Entity::new()
+        @position.positions.set(panel_entity, @math.Vec2D(60.0, 450.0)) 
+
+        let panel_layout = @system.TextLayout::new(
+          final_text,
+          font="italic 19px mplus_hzk",
+          color="white",
+          max_width=Some(200.0), 
+          align=@system.TextAlign::center(),
+          line_height=24.0,   
+        )
+        let panel_sprite = @sprite.Sprite::from_text_layout(panel_layout, 1, layer=@sprite.RenderLayer::ui())
+        
+        @sprite.sprites.set(panel_entity, panel_sprite)
+        @ui.uis.set(panel_entity, @ui.Ui::new())
+        synergy_panel_entities.val.push(panel_entity)
       }
-
-      let final_text = "\{synergy_info.name}\n\{synergy_info.description}\n\n目前队内有\{count}个单位\n\{synergy_info.state}\{active_bonus_text}"
-
-      let panel_entity = @system.Entity::new()
-      @position.positions.set(panel_entity, @math.Vec2D(60.0, 450.0)) 
-
-      let panel_layout = @system.TextLayout::new(
-        final_text,
-        font="italic 19px mplus_hzk",
-        color="white",
-        max_width=Some(200.0), 
-        align=@system.TextAlign::center(),
-        line_height=24.0,   
-      )
-      let panel_sprite = @sprite.Sprite::from_text_layout(panel_layout, 1, layer=@sprite.RenderLayer::ui())
-      
-      @sprite.sprites.set(panel_entity, panel_sprite)
-      @ui.uis.set(panel_entity, @ui.Ui::new())
-      synergy_panel_entities.val.push(panel_entity)
     }
   }
 }
