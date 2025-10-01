@@ -39,9 +39,9 @@ fn spawn_base_player_unit(pos: @math.Vec2D, shape_tag: UnitShape, color_tag: Syn
   unit_shapes.set(new_unit, shape_tag)
 
   let (base_shape, offset, radius) = match shape_tag {
-    UnitShape::Square =>   (@sprite.Shape::rect(35.0, 35.0, 10.0), @math.Vec2D(-17.5, -17.5), 0.0)
+    UnitShape::Square =>   (@sprite.Shape::rect(35.0, 35.0, 10.0), @math.Vec2D(-17.5, -17.5), 20.0)
     UnitShape::Triangle => (@sprite.Shape::triangle(38.0, 0.0), @math.Vec2D::zero(), 18.0)
-    UnitShape::Circle =>   (@sprite.Shape::circle(15.0), @math.Vec2D::zero(), 0.0)
+    UnitShape::Circle =>   (@sprite.Shape::circle(15.0), @math.Vec2D::zero(), 15.0)
   }
   
   sizes.set(new_unit, { radius: radius })
