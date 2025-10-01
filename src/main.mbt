@@ -91,14 +91,15 @@ pub fn update_game_world_system(backend: &@system.Backend) -> Unit {
   // 处理所有VFX的生成请求和生命周期
   vfx_spawner_system(backend)
   vfx_update_system(backend)
-
+  vfx_movement_system(backend)
   // 将所有单位的`velocity`应用到它们的`position`上
   apply_velocity_system(backend)
   // 为玩家小火车记录轨迹点
   path_history_system(backend)
   // 让车厢根据轨迹点进行跟随
   train_snake_follow_system(backend)
-
+  
+  update_score_display_system(backend)
   // 移除所有被标记为“死亡”的实体和它们的组件
   cleanup_system(backend)
 }
@@ -182,4 +183,3 @@ fn add_map() -> Unit {
   
   @sprite.sprites.set(map_entity, map_sprite)
 }
-
