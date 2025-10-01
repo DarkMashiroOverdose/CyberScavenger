@@ -230,17 +230,23 @@ fn setup_main_menu_ui() -> Unit {
 
 
 }
-
+let score_display_entity: Ref[Option[@system.Entity]] = Ref::new(None)
 fn setup_ingame_hud() -> Unit {
-  println("【调试日志 E】: 正在创建【游戏内HUD】...")
-  // --- 分数显示 ---
   let score_label = @system.Entity::new()
-  @position.positions.set(score_label, @math.Vec2D(100.0, 50.0))
-  let score_text = @sprite.Text::new("Score: 0", font="24px mplus_hzk")
-  let score_sprite = @sprite.Sprite::from_text(score_text, 1, layer=@sprite.RenderLayer::ui())
+  @position.positions.set(score_label, @math.Vec2D(100.0, 70.0))
+  
+  let score_layout = @system.TextLayout::new(
+    "Score: 0", 
+    font="bold 36px mplus_hzk", 
+    color="white"
+  )
+  let score_sprite = @sprite.Sprite::from_text_layout(score_layout, 100, layer=@sprite.RenderLayer::ui())
+  
   @sprite.sprites.set(score_label, score_sprite)
   @ui.uis.set(score_label, @ui.Ui::new())
+  
   ui_entities.val.push(score_label)
+  score_display_entity.val = Some(score_label)
 }
 
 fn setup_settings_ui() -> Unit {

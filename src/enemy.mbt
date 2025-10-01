@@ -5,6 +5,12 @@ pub enum EnemyType {
   Bomber      // 炸弹兵
 } derive(Show, Eq, @json.FromJson)
 
+pub struct ScoreValue {
+  value: Int
+}
+
+pub let score_values: Map[@system.Entity, ScoreValue] = Map::new()
+
 pub fn spawn_enemy(enemy_type: EnemyType, pos: @math.Vec2D) -> Unit {
   match enemy_type {
     EnemyType::Grunt => add_new_grunt(pos)
@@ -29,6 +35,8 @@ fn add_new_grunt(pos: @math.Vec2D) -> Unit {
   let (bar_bg, bar_fg) = attach_health_bar()
   healths.set(new_unit, { current: 8.0, max: 8.0, bar_bg_entity: bar_bg, bar_fg_entity: bar_fg })
   teams.set(new_unit, Team::Enemy)
+
+  score_values.set(new_unit, { value: 10 })
 
   combat_stats.set(
   new_unit, { 
@@ -62,6 +70,8 @@ fn add_new_tank_enemy(pos: @math.Vec2D) -> Unit {
   healths.set(new_unit, { current: 30.0, max: 30.0, bar_bg_entity: bar_bg, bar_fg_entity: bar_fg })
   teams.set(new_unit, Team::Enemy)
 
+  score_values.set(new_unit, { value: 50 })
+
   combat_stats.set(new_unit, { 
     attack_range: 50.0,
     on_hit_effects: [OnHitEffect::DealDamage(1.0, Some(VFX_Type::MeleeSlash))],
@@ -94,6 +104,8 @@ fn add_new_archer(pos: @math.Vec2D) -> Unit {
   healths.set(new_unit, { current: 8.0, max: 8.0, bar_bg_entity: bar_bg, bar_fg_entity: bar_fg }) 
   teams.set(new_unit, Team::Enemy)
 
+  score_values.set(new_unit, { value: 20 })
+
   combat_stats.set(new_unit, { 
     attack_range: 250.0, 
     on_hit_effects: [OnHitEffect::DealDamage(1.0, None)], 
@@ -125,6 +137,8 @@ fn add_new_bomber(pos: @math.Vec2D) -> Unit {
   healths.set(new_unit, { current: 80.0, max: 80.0, bar_bg_entity: bar_bg, bar_fg_entity: bar_fg })
   teams.set(new_unit, Team::Enemy)
 
+  score_values.set(new_unit, { value: 20 })
+  
   combat_stats.set(new_unit, { 
     attack_range: 220.0,
     on_hit_effects: [

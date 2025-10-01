@@ -18,6 +18,7 @@ pub enum SpriteTemplate {
   Picture(String, @math.Vec2D)
   Shape(@sprite.Shape, @sprite.DrawStyle)
   Animation(@sprite.Animation, @math.Vec2D)
+  TextLayout(@system.TextLayout) 
 }
 /// 用一个结构体来描述特效的【动态行为】
 pub struct VFX_Behavior {
@@ -73,6 +74,7 @@ fn setup_vfx_library() -> Unit {
       // 【核心】指定生命周期模式
       lifecycle: VFX_Lifecycle::Timer(5.0),
       dynamic_transform: Some({
+        is_pulsing_scale: true,
         rotation_speed: 0.5,
         scale_speed: 1.0,
         scale_amplitude: 0.1,
@@ -91,6 +93,7 @@ fn setup_vfx_library() -> Unit {
       // 【核心】指定生命周期模式
       lifecycle: VFX_Lifecycle::Timer(5.0),
       dynamic_transform: Some({
+        is_pulsing_scale: true,
         rotation_speed: 0.5,
         scale_speed: 1.0,
         scale_amplitude: 0.1,
@@ -108,6 +111,7 @@ fn setup_vfx_library() -> Unit {
       // 【核心】指定生命周期模式
       lifecycle: VFX_Lifecycle::Timer(0.5),
       dynamic_transform: Some({
+        is_pulsing_scale: true,
         rotation_speed: 0.5,
         scale_speed: 10.0,
         scale_amplitude: 0.1,
@@ -125,6 +129,7 @@ fn setup_vfx_library() -> Unit {
       // 【核心】指定生命周期模式
       lifecycle: VFX_Lifecycle::Timer(0.5),
       dynamic_transform: Some({
+        is_pulsing_scale: true,
         rotation_speed: 0.5,
         scale_speed: 10.0,
         scale_amplitude: 0.1,
@@ -142,6 +147,7 @@ fn setup_vfx_library() -> Unit {
       // 【核心】指定生命周期模式
       lifecycle: VFX_Lifecycle::Timer(0.5),
       dynamic_transform: Some({
+        is_pulsing_scale: true,
         rotation_speed: 0.5,
         scale_speed: 1.0,
         scale_amplitude: 0.1,
@@ -151,6 +157,7 @@ fn setup_vfx_library() -> Unit {
     },
     z_index: 120,
   })
+  
 }
 
 // ---------------------------------
@@ -190,6 +197,13 @@ pub fn vfx_spawner_system(_backend: &@system.Backend) -> Unit {
         SpriteTemplate::Animation(anim, dims) => {
           let offset_to_center = dims.scalar_div(-2.0)
           @sprite.Sprite::from_animation(anim, template.z_index, offset=offset_to_center, layer=@sprite.RenderLayer::game_world())
+        }
+        SpriteTemplate::TextLayout(layout) => {
+          @sprite.Sprite::from_text_layout(
+            layout, 
+            template.z_index, 
+            layer=@sprite.RenderLayer::ui()
+          )
         }
       }
 
@@ -247,6 +261,7 @@ pub fn vfx_update_system(_backend: &@system.Backend) -> Unit {
 //  精灵动态变换系统
 // ---------------------
 pub struct DynamicTransform {
+  is_pulsing_scale: Bool
   rotation_speed: Double // 每秒旋转的弧度
   scale_speed: Double    // 缩放脉冲的速度
   scale_amplitude: Double // 缩放脉冲的幅度 (e.g., 0.2 表示在 80% 到 120% 之间缩放)
@@ -276,8 +291,13 @@ pub fn dynamic_transform_system(_backend: &@system.Backend) -> Unit {
         }
 
         // 计算当前的缩放值
-        let scale_pulse = @kmath.sin(new_time * transform_data.scale_speed)
-        let current_scale = 1.0 + scale_pulse * transform_data.scale_amplitude
+        let current_scale = if transform_data.is_pulsing_scale {
+          // 旧的脉冲逻辑
+          1.0 + @kmath.sin(new_time * transform_data.scale_speed) * transform_data.scale_amplitude
+        } else {
+          // 新的持续放大逻辑
+          1.0 + new_time * transform_data.scale_speed
+        }
         
         // 直接获取Sprite并修改它
         if @sprite.sprites.get(entity) is Some(sprite) {
@@ -343,4 +363,51 @@ pub fn update_unit_orientation(entity: @system.Entity, direction: @math.Vec2D) -
     sprite.transform = sprite.transform * @math.Transform::from_rotation_rad(angle_to_apply)
     
   }
+}
+
+pub struct VFX_Movement {
+  velocity: @math.Vec2D
+}
+
+pub let vfx_movements: Map[@system.Entity, VFX_Movement] = Map::new()
+
+pub fn vfx_movement_system(_backend: &@system.Backend) -> Unit {
+  let delta_seconds = 1.0 / 60.0
+
+  for entry in vfx_movements.iter() {
+    let entity = entry.0
+    let movement = entry.1
+
+    if entity.is_alive() {
+      if @position.positions.get(entity) is Some(pos) {
+        let new_pos = pos.0 + movement.velocity.scalar_mul(delta_seconds)
+        @position.positions.set(entity, @position.Position(new_pos))
+      }
+    }
+  }
+}
+pub fn spawn_kill_score_vfx(score: Int, position: @math.Vec2D) -> Unit {
+  let vfx_entity = @system.Entity::new()
+  @position.positions.set(vfx_entity, position)
+  
+  let layout = @system.TextLayout::new(
+    "+\{score}", 
+    font="bold 24px mplus_hzk", 
+    color="#FFD700"
+  )
+  let sprite = @sprite.Sprite::from_text_layout(layout, 999, layer=@sprite.RenderLayer::ui())
+  @sprite.sprites.set(vfx_entity, sprite)
+  vfx_movements.set(vfx_entity, { 
+    velocity: @math.Vec2D(-150.0, -250.0) 
+  })
+  dynamic_transforms.set(vfx_entity, {
+    rotation_speed: 0.0, 
+    scale_speed: 0.2,
+    scale_amplitude: 0.0,
+    is_pulsing_scale: false,
+    _current_angle: 0.0,
+    _time_elapsed: 0.0,
+  })
+
+  vfx_instances.set(vfx_entity, VFX_Lifecycle::Timer(1.2))
 }

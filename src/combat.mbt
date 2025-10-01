@@ -138,6 +138,17 @@ fn combat_system(backend: &@system.Backend) -> Unit {
         entities_to_cleanup.val.push(unit)
         // 将血量设为-1，防止下一帧被重复添加。
         healths.set(unit, {..health, current: -1.0})
+        //杀死一个敌人计分
+        if teams.get(unit) == Some(Team::Enemy) {
+          if score_values.get(unit) is Some(score_comp) {
+            let points_to_add = score_comp.value
+            add_score(points_to_add)
+            // 在敌人的位置生成一个分数特效
+            if @position.positions.get(unit) is Some(pos) {
+              spawn_kill_score_vfx(points_to_add, pos.0)
+            }
+          }
+        }
       }
     }
   }
