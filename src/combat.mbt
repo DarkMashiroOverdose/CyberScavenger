@@ -180,22 +180,43 @@ fn aggro_system(_backend: &@system.Backend) -> Unit {
   for unit_a in all_units.val {
     if unit_a.is_alive() && teams.get(unit_a) is Some(team_a) {
       
-      //根据阵营执行不同的索敌逻辑
-      if team_a == Team::Player {
+      let mut target_is_valid = true
+      if attack_targets.get(unit_a) is Some(current_target) {
+        //目标是否还活着
+        if !current_target.is_alive() {
+          target_is_valid = false
+        } else if combat_stats.get(unit_a) is Some(stats) &&
+                  @position.positions.get(unit_a) is Some(pos_a) &&
+                  @position.positions.get(current_target) is Some(pos_target) {
+          //目标是否还在警戒范围内
+          if pos_a.0.distance_to(pos_target.0) > stats.aggro_range {
+            target_is_valid = false
+          }
+        } else {
+          //如果获取不到位置信息，也视为目标无效
+          target_is_valid = false
+        }
+        // 如果目标无效，就清除它
+        if !target_is_valid {
+          let _ = attack_targets.remove(unit_a)
+          println("【索敌】: 单位 \{unit_a} 的目标已失效，已清除。")
+        }
+      }
+      if attack_targets.get(unit_a) is None {
+        // (这部分寻找最近目标的逻辑，玩家和敌人是共通的，我们可以合并)
+        let mut closest_target = None
+        let mut min_distance = 99999.0
 
-        // --- 玩家单位的索敌逻辑 ---
-        if attack_targets.get(unit_a) is None {
-          let mut closest_target = None
-          let mut min_distance = 99999.0
-
-          if @position.positions.get(unit_a) is Some(pos_a) {
-            for unit_b in all_units.val {
-              if teams.get(unit_b) is Some(Team::Enemy) {
+        if @position.positions.get(unit_a) is Some(pos_a) {
+          for unit_b in all_units.val {
+            if unit_b.is_alive() && teams.get(unit_b) is Some(team_b) {
+              // 寻找不同阵营的目标
+              if team_a != team_b {
                 if @position.positions.get(unit_b) is Some(pos_b) {
                   let distance = pos_a.0.distance_to(pos_b.0)
                   if combat_stats.get(unit_a) is Some(stats) && 
-                     distance < stats.aggro_range && 
-                     distance < min_distance {
+                      distance < stats.aggro_range && 
+                      distance < min_distance {
                     min_distance = distance
                     closest_target = Some(unit_b)
                   }
@@ -203,35 +224,12 @@ fn aggro_system(_backend: &@system.Backend) -> Unit {
               }
             }
           }
-          if closest_target is Some(target) {
-            attack_targets.set(unit_a, target)
-          }
         }
-      } else if team_a == Team::Enemy {
-        // --- 敌人单位的索敌逻辑 ---
-        // 敌人只有在空闲时才会寻找新目标
-        let is_idle = attack_targets.get(unit_a) is None && destinations.get(unit_a) is None
-        if is_idle {
-          let mut closest_target = None
-          let mut min_distance = 99999.0
-          if @position.positions.get(unit_a) is Some(pos_a) {
-             for unit_b in all_units.val {
-                if teams.get(unit_b) is Some(Team::Player) {
-                  if @position.positions.get(unit_b) is Some(pos_b) {
-                    let distance = pos_a.0.distance_to(pos_b.0)
-                    if combat_stats.get(unit_a) is Some(stats) && 
-                       distance < stats.aggro_range && 
-                       distance < min_distance {
-                      min_distance = distance
-                      closest_target = Some(unit_b)
-                    }
-                  }
-                }
-             }
-          }
-          if closest_target is Some(target) {
-            attack_targets.set(unit_a, target)
-          }
+        
+        // 如果找到了新目标，就设置它
+        if closest_target is Some(target) {
+          attack_targets.set(unit_a, target)
+          println("【索敌】: 单位 \{unit_a} 锁定了新目标 \{target}")
         }
       }
     }

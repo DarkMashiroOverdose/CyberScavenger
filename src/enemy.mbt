@@ -44,7 +44,7 @@ fn add_new_grunt(pos: @math.Vec2D) -> Unit {
     on_hit_effects: [OnHitEffect::DealDamage(1.0, None)], 
     attack_cooldown: 1.0, 
     current_cooldown: 0.0, 
-    aggro_range: 500.0,
+    aggro_range: 5000.0,
     attack_type: AttackType::Melee,
     aoe_radius: 0.0,
     crit_rate: 0.0,
@@ -77,7 +77,7 @@ fn add_new_tank_enemy(pos: @math.Vec2D) -> Unit {
     on_hit_effects: [OnHitEffect::DealDamage(1.0, Some(VFX_Type::MeleeSlash))],
     attack_cooldown: 2.5,
     current_cooldown: 0.0, 
-    aggro_range: 500.0,
+    aggro_range: 5000.0,
     attack_type: AttackType::AoE,
     aoe_radius: 60.0,
     crit_rate: 0.05,
@@ -111,7 +111,7 @@ fn add_new_archer(pos: @math.Vec2D) -> Unit {
     on_hit_effects: [OnHitEffect::DealDamage(1.0, None)], 
     attack_cooldown: 1.8, 
     current_cooldown: 0.0, 
-    aggro_range: 500.0,
+    aggro_range: 5000.0,
     attack_type: AttackType::Bullet,
     aoe_radius: 0.0,
     crit_rate: 0.1,
@@ -138,7 +138,7 @@ fn add_new_bomber(pos: @math.Vec2D) -> Unit {
   teams.set(new_unit, Team::Enemy)
 
   score_values.set(new_unit, { value: 20 })
-  
+
   combat_stats.set(new_unit, { 
     attack_range: 220.0,
     on_hit_effects: [
@@ -150,7 +150,7 @@ fn add_new_bomber(pos: @math.Vec2D) -> Unit {
     ],
     attack_cooldown: 3.5, // 攻速非常慢
     current_cooldown: 0.0, 
-    aggro_range: 500.0,
+    aggro_range: 5000.0,
     attack_type: AttackType::Bullet,
     aoe_radius: 0.0,
     crit_rate: 0.05,
