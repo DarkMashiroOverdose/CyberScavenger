@@ -53,6 +53,7 @@ fn update_logic_system(backend: &@system.Backend) -> Unit {
     UIState::InGame => {
       // 才执行游戏世界的更新
       // 假设您有这样一个总的更新函数
+      check_game_over_system(backend)
       update_game_world_system(backend) 
     }
     // 在主菜单、设置等其他任何界面，我们什么都不做，游戏世界自然就“暂停”了
@@ -87,6 +88,8 @@ pub fn update_game_world_system(backend: &@system.Backend) -> Unit {
   buff_system(backend)
   // 根据时间生成新的敌人
   endless_spawner_system(backend)
+  // 显示波次
+  update_wave_display_system(backend)
   
   // 处理所有VFX的生成请求和生命周期
   vfx_spawner_system(backend)
@@ -145,6 +148,11 @@ fn init_game_world() -> Unit {
     println("【主逻辑】: 读取已选队伍 `selected_squad` 并生成单位...")
     println("         当前队伍是: {selected_squad.val}")
 
+    cleanup_game_world()
+    score.val = 0
+    wave_count.val = 0
+    spawn_timer.val = INITIAL_SPAWN_INTERVAL
+
     // 1. 遍历玩家在组队界面选择的单位列表 `selected_squad`
     for unit_type_to_spawn in selected_squad.val {
         let spawn_pos = @math.Vec2D(350.0, 500.0) // 暂时都生成在一个点
@@ -182,4 +190,25 @@ fn add_map() -> Unit {
   )
   
   @sprite.sprites.set(map_entity, map_sprite)
+}
+pub fn check_game_over_system(_backend: &@system.Backend) -> Unit {
+  if current_ui_state.val != UIState::InGame {
+    return
+  }
+  
+  // 2. 统计场上还存活的玩家单位数量
+  let mut living_player_units = 0
+  for unit in all_units.val {
+    if unit.is_alive() {
+      if teams.get(unit) == Some(Team::Player) {
+        living_player_units = living_player_units + 1
+      }
+    }
+  }
+
+  // 3. 如果存活的玩家单位为 0，就切换到“游戏结束”场景
+  if living_player_units == 0 {
+    println("【游戏逻辑】: 所有玩家单位已阵亡，游戏结束！")
+    current_ui_state.val = UIState::GameOver
+  }
 }

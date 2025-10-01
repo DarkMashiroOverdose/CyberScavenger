@@ -6,6 +6,7 @@ pub enum UIState {
   InGame
   SquadBuilder
   Settings
+  GameOver
 } derive(Eq)
 
 let current_ui_state: Ref[UIState] = Ref::new(UIState::MainMenu)
@@ -30,6 +31,7 @@ pub enum ButtonAction {
   DeselectUnit(Int)
   SetSynergyFilter(Option[SynergyTag]) // 设置颜色筛选
   SetShapeFilter(Option[UnitShape])   // 设置形状筛选
+  
 }
 
 pub struct Button {
@@ -101,6 +103,66 @@ fn cleanup_ui() -> Unit {
 
   println("【调试日志 C】: 旧UI清理完毕！")
 }
+
+fn cleanup_game_world() -> Unit {
+  println("【清理】: 正在彻底清理游戏世界中的所有单位...")
+  
+  for unit in all_units.val {
+    if unit.is_alive() {
+      let _ = @sprite.sprites.remove(unit)
+      if healths.get(unit) is Some(health) {
+        let _ = @sprite.sprites.remove(health.bar_bg_entity)
+        let _ = @sprite.sprites.remove(health.bar_fg_entity)
+        @system.Entity::destroy(health.bar_bg_entity)
+        @system.Entity::destroy(health.bar_fg_entity)
+      }
+
+      let _ = healths.remove(unit)
+      let _ = combat_stats.remove(unit)
+      let _ = teams.remove(unit)
+      let _ = destinations.remove(unit)
+      let _ = attack_targets.remove(unit)
+      let _ = @position.positions.remove(unit)
+      let _ = @velocity.velocities.remove(unit)
+      let _ = score_values.remove(unit)
+      let _ = movement_stats.remove(unit)
+      let _ = sizes.remove(unit)
+      let _ = train_cars.remove(unit)
+
+      println("【清理】: 正在清理所有抛射物...")
+      for projectile_entity in projectiles.keys() {
+        if projectile_entity.is_alive() {
+          let _ = @sprite.sprites.remove(projectile_entity)
+          let _ = @position.positions.remove(projectile_entity)
+          let _ = @velocity.velocities.remove(projectile_entity)
+          @system.Entity::destroy(projectile_entity)
+        }
+      }
+
+      println("【清理】: 正在清理所有VFX...")
+      for vfx_entity in vfx_instances.keys() {
+        if vfx_entity.is_alive() {
+          let _ = @sprite.sprites.remove(vfx_entity)
+          let _ = @position.positions.remove(vfx_entity)
+          let _ = dynamic_transforms.remove(vfx_entity)
+          let _ = vfx_movements.remove(vfx_entity) 
+          @system.Entity::destroy(vfx_entity)
+        }
+      }
+  
+      @system.Entity::destroy(unit)
+    }
+  }
+  
+  // 3. 彻底清空所有单位列表和抛射物等动态列表
+  all_units.val.clear()
+  projectiles.clear()
+  vfx_instances.clear()
+  // ... 清理其他任何可能残留实体的列表
+  
+  println("【清理】: 游戏世界彻底清理完毕。")
+}
+
 let title_frames: Array[@sprite.AnimationFrame] = @sprite.frames_from_atlas(
   "assets/gui/start_menu/title_animated.png",
   79, 
@@ -231,6 +293,7 @@ fn setup_main_menu_ui() -> Unit {
 
 }
 let score_display_entity: Ref[Option[@system.Entity]] = Ref::new(None)
+let wave_display_entity: Ref[Option[@system.Entity]] = Ref::new(None)
 fn setup_ingame_hud() -> Unit {
   let score_label = @system.Entity::new()
   @position.positions.set(score_label, @math.Vec2D(100.0, 70.0))
@@ -247,8 +310,61 @@ fn setup_ingame_hud() -> Unit {
   
   ui_entities.val.push(score_label)
   score_display_entity.val = Some(score_label)
-}
 
+  let wave_label = @system.Entity::new()
+  @position.positions.set(wave_label, @math.Vec2D(700.0, 70.0))
+  
+  let wave_layout = @system.TextLayout::new(
+    "Wave: 0", 
+    font="bold 32px mplus_hzk", 
+    color="white",
+    line_height = 35.0,
+    max_width= Some(500.0),
+    align=@system.TextAlign::right()
+  )
+  let wave_sprite = @sprite.Sprite::from_text_layout(wave_layout, 100, layer=@sprite.RenderLayer::ui())
+  
+  @sprite.sprites.set(wave_label, wave_sprite)
+  @ui.uis.set(wave_label, @ui.Ui::new())
+
+  ui_entities.val.push(wave_label)
+  wave_display_entity.val = Some(wave_label)
+}
+pub fn update_wave_display_system(_backend: &@system.Backend) -> Unit {
+  if current_ui_state.val == UIState::InGame {
+    if wave_display_entity.val is Some(entity) {
+      if @sprite.sprites.get(entity) is Some(old_sprite) {
+        if old_sprite.sprite_type is @sprite.SpriteType::TextLayout(old_layout) {
+          let seconds_to_next_wave = max_double(0.0, spawn_timer.val).to_int()
+
+          let new_wave_text = if wave_count.val == 0 {
+            "首波敌人还有 \{seconds_to_next_wave} 秒来袭"
+          } else {
+            "目前第 \{wave_count.val} 波\n下一波敌人还有 \{seconds_to_next_wave} 秒来袭"
+          }
+          
+          if old_layout.content != new_wave_text {
+            let new_layout = @system.TextLayout::new(
+              new_wave_text,
+              font=old_layout.font,
+              color=old_layout.color,
+              max_width=old_layout.max_width,
+              align=@system.TextAlign::right(),
+              line_height=old_layout.line_height,
+            )
+            let new_sprite = @sprite.Sprite::from_text_layout(
+              new_layout,
+              old_sprite.zindex,
+              layer=old_sprite.layer,
+              offset=old_sprite.offset,
+            )
+            @sprite.sprites.set(entity, new_sprite)
+          }
+        }
+      }
+    }
+  }
+}
 fn setup_settings_ui() -> Unit {
 
   let back_button_entity = @system.Entity::new()
@@ -405,6 +521,53 @@ fn setup_squad_builder_grid_buttons() -> Unit {
     squad_builder_unit_buttons.val.push(entity)
     i = i + 1
   }
+}
+fn setup_game_over_ui() -> Unit {
+  let game_over_title = @system.Entity::new()
+  @position.positions.set(game_over_title, @math.Vec2D(640.0, 300.0))
+  let layout = @system.TextLayout::new(
+    "GAME OVER", 
+    font="bold 80px mplus_hzk", 
+    color="red",
+    align=@system.TextAlign::center()
+  )
+  let sprite = @sprite.Sprite::from_text_layout(layout, 10, layer=@sprite.RenderLayer::ui())
+  @sprite.sprites.set(game_over_title, sprite)
+  @ui.uis.set(game_over_title, @ui.Ui::new())
+  ui_entities.val.push(game_over_title)
+  
+  let final_score_entity = @system.Entity::new()
+  @position.positions.set(final_score_entity, @math.Vec2D(640.0, 380.0)) 
+  let score_text = "最终得分: \{score.val}"
+  let score_layout = @system.TextLayout::new(
+    score_text, 
+    font="bold 32px mplus_hzk", 
+    color="white",
+    align=@system.TextAlign::center()
+  )
+  let score_sprite = @sprite.Sprite::from_text_layout(score_layout, 10, layer=@sprite.RenderLayer::ui())
+  
+  @sprite.sprites.set(final_score_entity, score_sprite)
+  @ui.uis.set(final_score_entity, @ui.Ui::new())
+  ui_entities.val.push(final_score_entity)
+
+  let back_button = @system.Entity::new()
+  @position.positions.set(back_button, @math.Vec2D(640.0, 450.0))
+  let back_layout = @system.TextLayout::new("[ 返回主菜单 ]", font="32px mplus_hzk", color="white")
+  let back_sprite = @sprite.Sprite::from_text_layout(back_layout, 10, layer=@sprite.RenderLayer::ui())
+  @sprite.sprites.set(back_button, back_sprite)
+  @ui.uis.set(back_button, @ui.Ui::new())
+  let button_comp = Button::{
+    area: @math.Rect::{ position: @math.Vec2D(640.0, 450.0), size: @math.Vec2D(300.0, 50.0) },
+    action: ButtonAction::SwitchState(UIState::MainMenu),
+    normal_appearance: ButtonAppearance::FromTextLayout(back_layout),
+    hover_appearance: ButtonAppearance::FromTextLayout(
+      @system.TextLayout::new("[ 返回主菜单 ]", font="32px mplus_hzk", color="yellow")
+    ),
+    is_hovered: false,
+  }
+  buttons.set(back_button, button_comp)
+  ui_entities.val.push(back_button)
 }
 fn update_grid_visibility() -> Unit {
   let start_x = 400.0
@@ -737,10 +900,12 @@ fn update_synergy_panel() -> Unit {
 }
 pub fn update_ui_system(_backend: &@system.Backend) -> Unit {
   if current_ui_state.val != prev_ui_state.val {
+    if prev_ui_state.val == UIState::GameOver {
+      cleanup_game_world()
+    }
     if prev_ui_state.val == UIState::SquadBuilder && current_ui_state.val == UIState::InGame {
         init_game_world()
     }
-
     cleanup_ui()
     
     match current_ui_state.val {
@@ -748,6 +913,7 @@ pub fn update_ui_system(_backend: &@system.Backend) -> Unit {
       UIState::SquadBuilder => setup_squad_builder_ui()
       UIState::InGame => setup_ingame_hud()
       UIState::Settings => setup_settings_ui()
+      UIState::GameOver => setup_game_over_ui()
     }
     
     //进入组队界面时，清空上一局的队伍
