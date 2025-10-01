@@ -75,6 +75,7 @@ fn add_new_orange_square(pos: @math.Vec2D) -> @system.Entity {
     attack_cast_vfx: Some(AoEMeeleOrange),    
     area_effect_vfx: None,
     attack_sfx: Some(PlayerShoot), 
+    bullet_color: None,
   })
 
   all_units.val.push(new_unit)
@@ -113,6 +114,7 @@ fn add_new_orange_triangle(pos: @math.Vec2D) -> @system.Entity {
     attack_cast_vfx: None,    
     area_effect_vfx: None,
     attack_sfx: Some(PlayerShoot), 
+    bullet_color: Some(gdd_color_palette.get(Orange).unwrap_or("#FFFFFF"))
   })
 
   all_units.val.push(new_unit)
@@ -150,6 +152,7 @@ fn add_new_orange_circle(pos: @math.Vec2D) -> @system.Entity {
     attack_cast_vfx: None,    
     area_effect_vfx: None,
     attack_sfx: Some(PlayerShoot), 
+    bullet_color: Some(gdd_color_palette.get(Orange).unwrap_or("#FFFFFF"))
   })
 
   all_units.val.push(new_unit)
@@ -186,6 +189,7 @@ fn add_new_purple_square(pos: @math.Vec2D) -> @system.Entity {
     attack_cast_vfx: None,    
     area_effect_vfx: None,
     attack_sfx: Some(PlayerShoot), 
+    bullet_color: Some(gdd_color_palette.get(Purple).unwrap_or("#FFFFFF"))
   })
 
   all_units.val.push(new_unit)
@@ -223,6 +227,7 @@ fn add_new_purple_triangle(pos: @math.Vec2D) -> @system.Entity {
     attack_cast_vfx: None,    
     area_effect_vfx: None,
     attack_sfx: Some(PlayerShoot), 
+    bullet_color: Some(gdd_color_palette.get(Purple).unwrap_or("#FFFFFF"))
   })
 
   all_units.val.push(new_unit)
@@ -260,6 +265,7 @@ fn add_new_purple_circle(pos: @math.Vec2D) -> @system.Entity {
     attack_cast_vfx: None,    
     area_effect_vfx: None,
     attack_sfx: Some(PlayerShoot), 
+    bullet_color: Some(gdd_color_palette.get(Purple).unwrap_or("#FFFFFF"))
   })
 
   all_units.val.push(new_unit)
@@ -296,6 +302,7 @@ fn add_new_green_square(pos: @math.Vec2D) -> @system.Entity {
     attack_cast_vfx: None,    
     area_effect_vfx: None,
     attack_sfx: Some(PlayerShoot), 
+    bullet_color: Some(gdd_color_palette.get(Green).unwrap_or("#FFFFFF"))
   })
 
   all_units.val.push(new_unit)
@@ -333,6 +340,7 @@ fn add_new_green_triangle(pos: @math.Vec2D) -> @system.Entity {
     attack_cast_vfx: None,    
     area_effect_vfx: None,
     attack_sfx: Some(PlayerShoot), 
+    bullet_color: Some(gdd_color_palette.get(Green).unwrap_or("#FFFFFF"))
   })
 
   all_units.val.push(new_unit)
@@ -370,6 +378,7 @@ fn add_new_green_circle(pos: @math.Vec2D) -> @system.Entity {
     attack_cast_vfx: None,    
     area_effect_vfx: None,
     attack_sfx: Some(PlayerShoot), 
+    bullet_color: Some(gdd_color_palette.get(Green).unwrap_or("#FFFFFF"))
   })
 
   all_units.val.push(new_unit)
@@ -398,6 +407,7 @@ fn add_new_blue_square(pos: @math.Vec2D) -> @system.Entity {
     attack_cast_vfx: None,    
     area_effect_vfx: None,
     attack_sfx: Some(PlayerShoot), 
+    bullet_color: Some(gdd_color_palette.get(Blue).unwrap_or("#FFFFFF"))
   })
 
   all_units.val.push(new_unit)
@@ -435,6 +445,7 @@ fn add_new_blue_triangle(pos: @math.Vec2D) -> @system.Entity {
     attack_cast_vfx: None,    
     area_effect_vfx: None,
     attack_sfx: Some(PlayerShoot), 
+    bullet_color: Some(gdd_color_palette.get(Blue).unwrap_or("#FFFFFF"))
   })
 
   all_units.val.push(new_unit)
@@ -472,6 +483,7 @@ fn add_new_blue_circle(pos: @math.Vec2D) -> @system.Entity {
     attack_cast_vfx: None,    
     area_effect_vfx: None,
     attack_sfx: Some(PlayerShoot), 
+    bullet_color: Some(gdd_color_palette.get(Blue).unwrap_or("#FFFFFF"))
   })
 
   all_units.val.push(new_unit)

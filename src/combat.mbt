@@ -15,6 +15,7 @@ pub struct CombatStats {
   attack_cast_vfx: Option[VFX_Type]
   area_effect_vfx: Option[VFX_Type] 
   attack_sfx: Option[SFX_Type]
+  bullet_color: Option[String]
 }
 /// Map绑定单位与战斗系统
 let combat_stats: Map[@system.Entity, CombatStats] = Map::new()

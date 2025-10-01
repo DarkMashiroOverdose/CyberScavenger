@@ -20,8 +20,13 @@ fn execute_bullet_attack(attacker: @system.Entity, target: @system.Entity, stats
   println("[Log] Executing Bullet Attack from \{attacker} to \{target}")
   
   if teams.get(attacker) is Some(attacker_team) {
+    let color_to_use = stats.bullet_color.unwrap_or("red")
+    
     let bullet_sprite = @sprite.Sprite::from_shape(
-        @sprite.ColoredShape::new(@sprite.Shape::circle(5.0), @sprite.DrawStyle::fill("red")),
+        @sprite.ColoredShape::new(
+            @sprite.Shape::circle(5.0), 
+            @sprite.DrawStyle::fill(color_to_use)
+        ),
         200, 
         layer=@sprite.RenderLayer::game_world(),
     )

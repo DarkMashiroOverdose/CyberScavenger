@@ -43,6 +43,7 @@ fn add_new_grunt(pos: @math.Vec2D) -> Unit {
     attack_cast_vfx: None,
     area_effect_vfx: None,
     attack_sfx: Some(EnemyHit),
+    bullet_color: None,
   })
   all_units.val.push(new_unit)
 }
@@ -73,6 +74,7 @@ fn add_new_tank_enemy(pos: @math.Vec2D) -> Unit {
     attack_cast_vfx: Some(AoEMeeleRed),
     area_effect_vfx: None,
     attack_sfx: Some(EnemyHit),
+    bullet_color: None,
   })
   all_units.val.push(new_unit)
 }
@@ -104,6 +106,7 @@ fn add_new_archer(pos: @math.Vec2D) -> Unit {
     attack_cast_vfx: None,
     area_effect_vfx: None,
     attack_sfx: Some(EnemyShoot),
+    bullet_color: Some("#ff4800ff"),
   })
   all_units.val.push(new_unit)
 }
@@ -140,6 +143,7 @@ fn add_new_bomber(pos: @math.Vec2D) -> Unit {
     attack_cast_vfx: None,
     area_effect_vfx: None, 
     attack_sfx: Some(EnemyShoot),
+    bullet_color: Some("#A83232"),
   })
   all_units.val.push(new_unit)
 }

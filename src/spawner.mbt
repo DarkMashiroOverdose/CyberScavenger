@@ -46,7 +46,7 @@ pub fn endless_spawner_system(_backend: &@system.Backend) -> Unit {
     wave_count.val += 1
     println("[Game] Wave \{wave_count.val} starting!")
 
-    let num_to_spawn = 8 + wave_count.val * 2
+    let num_to_spawn = 8 + wave_count.val * 1
 
     let enemy_pool = [
       EnemyType::Grunt, EnemyType::Grunt, EnemyType::Grunt, 
