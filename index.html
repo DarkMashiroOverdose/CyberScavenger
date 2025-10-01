@@ -132,7 +132,6 @@
             } return shader;
         }
 
-        // --- 主执行逻辑 ---
         function startPostProcessingLoop() {
             // 获取 game-canvas 作为 WebGL 的纹理来源
             const gameCanvas = document.getElementById('game-canvas');
@@ -155,7 +154,6 @@
         // 页面加载完毕后，启动我们的并行渲染循环
         window.addEventListener('load', startPostProcessingLoop);
 
-        // 阻止右键菜单。注意：由于UI画布在最上层，我们应该在它上面监听事件
         document.getElementById('ui-canvas').addEventListener('contextmenu', e => e.preventDefault());
     </script>
 </body>
