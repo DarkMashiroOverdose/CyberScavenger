@@ -1,7 +1,11 @@
 // =================================================================
 // 单位与队伍数据管理 (squad.mbt)
 // =================================================================
-let selected_squad_display_entities: Ref[Array[@system.Entity]] = Ref::new([])
+struct SquadSlot {
+  portrait_entity: @system.Entity
+  delete_button_entity: @system.Entity
+}
+let squad_display_slots: Ref[Array[SquadSlot]] = Ref::new([])
 pub enum UnitType {
   OrangeSquare
   OrangeTriangle

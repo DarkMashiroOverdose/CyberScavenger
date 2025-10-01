@@ -82,6 +82,7 @@ fn combat_system(backend: &@system.Backend) -> Unit {
           destinations.remove(attacker)
 
           if attacker_stats.current_cooldown <= 0.0 {
+            
             if attacker_stats.attack_sfx is Some(sfx) {
               sfx_requests.val.push({ 
                 sfx_type: sfx, 
@@ -90,11 +91,7 @@ fn combat_system(backend: &@system.Backend) -> Unit {
             }
             // 重置冷却
             combat_stats.set(attacker, { ..attacker_stats, current_cooldown: attacker_stats.attack_cooldown })
-            
-            //添加攻击音效
-            if attacker_stats.attack_sfx is Some(sfx) {
-              sfx_requests.val.push({ sfx_type: sfx, position: Some(attacker_pos.0) })
-            }
+
             
             //添加攻击动画
             if attacker_stats.attack_cast_vfx is Some(vfx) {

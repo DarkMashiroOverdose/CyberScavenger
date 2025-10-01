@@ -21,7 +21,7 @@ let sticky_unit_for_detail_view: Ref[Option[UnitType]] = Ref::new(None)
 
 // 新增 #2: 专门用来存放“详情面板”UI实体的列表
 let detail_panel_entities: Ref[Array[@system.Entity]] = Ref::new([])
-let squad_builder_grid_entities: Ref[Array[@system.Entity]] = Ref::new([])
+let squad_builder_unit_buttons: Ref[Array[@system.Entity]] = Ref::new([])
 
 let synergy_panel_entities: Ref[Array[@system.Entity]] = Ref::new([])
 pub enum ButtonAction {
@@ -56,38 +56,41 @@ pub let buttons : Map[@system.Entity, Button] = Map::new()
 fn cleanup_ui() -> Unit {
   println("【调试日志 A】: 检测到状态切换，开始清理旧的UI...")
   
-  //清理静态UI
   for entity in ui_entities.val {
     if @sprite.sprites.get(entity) is Some(_) { let _ = @sprite.sprites.remove(entity) }
     @system.Entity::destroy(entity)
   }
   
-  //清理动态生成的“已选单位肖像”
-  for entity in selected_squad_display_entities.val {
+  for slot in squad_display_slots.val {
+    if @sprite.sprites.get(slot.portrait_entity) is Some(_) { 
+      let _ = @sprite.sprites.remove(slot.portrait_entity)
+    }
+    @system.Entity::destroy(slot.portrait_entity)
+    if buttons.get(slot.delete_button_entity) is Some(_) {
+      let _ = buttons.remove(slot.delete_button_entity)
+    }
+    if @sprite.sprites.get(slot.delete_button_entity) is Some(_) {
+      let _ = @sprite.sprites.remove(slot.delete_button_entity)
+    }
+    @system.Entity::destroy(slot.delete_button_entity)
+  }
+
+  for entity in squad_builder_unit_buttons.val {
     if @sprite.sprites.get(entity) is Some(_) { let _ = @sprite.sprites.remove(entity) }
     @system.Entity::destroy(entity)
   }
 
-  //清理动态生成的“单位选择网格”
-  for entity in squad_builder_grid_entities.val {
-    if @sprite.sprites.get(entity) is Some(_) { let _ = @sprite.sprites.remove(entity) }
-    @system.Entity::destroy(entity)
-  }
-
-  //关键修正：同时清理动态生成的“详情面板”
   for entity in detail_panel_entities.val {
     if @sprite.sprites.get(entity) is Some(_) { let _ = @sprite.sprites.remove(entity) }
     @system.Entity::destroy(entity)
   }
   
-  //清空所有追踪列表
   ui_entities.val = []
-  selected_squad_display_entities.val = []
-  squad_builder_grid_entities.val = []
+  squad_display_slots.val = []
+  squad_builder_unit_buttons.val = []
   detail_panel_entities.val = []
   buttons.clear()
   
-  //重置所有筛选和查看状态
   current_synergy_filter.val = Some(SynergyTag::Orange)
   current_shape_filter.val = None
   selected_unit_for_detail_view.val = None
@@ -240,22 +243,20 @@ fn setup_settings_ui() -> Unit {
 
   let back_button_entity = @system.Entity::new()
   @position.positions.set(back_button_entity, @math.Vec2D(400.0, 450.0))
-  let back_text = @sprite.Text::new("[Back to Main Menu]", font="32px mplus_hzk")
+  let back_text = @sprite.Text::new("---WIP---[Back to Main Menu]", font="32px mplus_hzk")
   let back_sprite = @sprite.Sprite::from_text(back_text, 1, layer=@sprite.RenderLayer::ui())
   @sprite.sprites.set(back_button_entity, back_sprite)
   @ui.uis.set(back_button_entity, @ui.Ui::new())
   let back_button_component = Button::{
     area: @math.Rect::{ 
-      position: @math.Vec2D(250.0, 425.0), 
-      size: @math.Vec2D(300.0, 50.0) 
+      position: @math.Vec2D(400.0, 425.0), 
+      size: @math.Vec2D(600.0, 50.0) 
     },
-    normal_appearance: ButtonAppearance::FromPicture(
-      "assets/gui/start_menu/about.png", 
-      @math.Vec2D(110.0, 60.0),
+    normal_appearance: ButtonAppearance::FromText(
+      back_text
     ),
-    hover_appearance: ButtonAppearance::FromPicture(
-      "assets/gui/start_menu/about_light.png",
-      @math.Vec2D(110.0, 60.0),
+    hover_appearance: ButtonAppearance::FromText(
+      back_text
     ),
     is_hovered: false, 
     action: ButtonAction::SwitchState(UIState::MainMenu)
@@ -298,6 +299,8 @@ fn setup_squad_builder_ui() -> Unit {
   ui_entities.val.push(confirm_entity)
 
   setup_filter_tabs()
+  setup_squad_builder_grid_buttons()
+  setup_squad_display_slots()
 
 }
 
@@ -351,47 +354,24 @@ fn setup_filter_tabs() -> Unit {
 // ---------------------------
 // 3. UI 逻辑更新与状态切换
 // ---------------------------
-fn update_squad_builder_grid() -> Unit {
-  //清理上一帧的旧网格
-  for entity in squad_builder_grid_entities.val {
-    if buttons.get(entity) is Some(_) { let _ = buttons.remove(entity) }
-    if @sprite.sprites.get(entity) is Some(_) { let _ = @sprite.sprites.remove(entity) }
-    @system.Entity::destroy(entity)
-  }
-  squad_builder_grid_entities.val = []
-
-  //根据筛选条件，过滤出要显示的单位
-  let filtered_units = Array::new()
-  for entry in unit_definitions.iter() {
-    let (unit_type, def) = entry
-    let synergy_match = match current_synergy_filter.val {
-      None => true
-      Some(filter) => def.color_tag == filter
-    }
-    let shape_match = match current_shape_filter.val {
-      None => true
-      Some(filter) => def.shape_tag == filter
-    }
-    if synergy_match && shape_match {
-      filtered_units.push((unit_type, def))
-    }
-  }
-
-  //循环创建被筛选出来的单位
+fn setup_squad_builder_grid_buttons() -> Unit {
   let start_x = 400.0
   let start_y = 90.0
   let spacing_x = 230.0
   let spacing_y = 120.0
   let per_row = 4
-  for i in 0 ..< filtered_units.length() {
-    let (unit_type, def) = filtered_units[i]
+  let mut i = 0
+
+  // 遍历的是完整的单位数据库
+  for entry in unit_definitions.iter() {
+    let (unit_type, def) = entry
     let row = (i / per_row).to_double()
     let col = (i % per_row).to_double()
     let pos = @math.Vec2D(start_x + col * spacing_x, start_y + row * spacing_y)
     
     let entity = @system.Entity::new()
     @position.positions.set(entity, pos)
-    
+
     let (base_shape, offset, _) = match def.shape_tag {
       UnitShape::Square =>   (@sprite.Shape::rect(50.0, 50.0, 0.0), @math.Vec2D(-25, -25), 0.0)
       UnitShape::Triangle => (@sprite.Shape::triangle(55.0, 0.0), @math.Vec2D(0.0, 0.0), 18.0)
@@ -411,8 +391,53 @@ fn update_squad_builder_grid() -> Unit {
       is_hovered: false,
     }
     buttons.set(entity, button_comp)
-    //关键：将动态生成的实体加入专门的列表
-    squad_builder_grid_entities.val.push(entity)
+
+    squad_builder_unit_buttons.val.push(entity)
+    i = i + 1
+  }
+}
+fn update_grid_visibility() -> Unit {
+  let start_x = 400.0
+  let start_y = 90.0
+  let spacing_x = 230.0
+  let spacing_y = 120.0
+  let per_row = 4
+  let mut visible_unit_count = 0
+
+  for entity in squad_builder_unit_buttons.val {
+    if buttons.get(entity) is Some(button) && @sprite.sprites.get(entity) is Some(sprite) {
+      if button.action is ButtonAction::SelectUnit(unit_type) {
+        let def = unit_definitions.get(unit_type).unwrap()
+        
+        let synergy_match = match current_synergy_filter.val {
+          None => true
+          Some(filter) => def.color_tag == filter
+        }
+        let shape_match = match current_shape_filter.val {
+          None => true
+          Some(filter) => def.shape_tag == filter
+        }
+        
+        if synergy_match && shape_match {
+          sprite.visible = true
+
+          let row = (visible_unit_count / per_row).to_double()
+          let col = (visible_unit_count % per_row).to_double()
+          let new_pos = @math.Vec2D(start_x + col * spacing_x, start_y + row * spacing_y)
+          
+          @position.positions.set(entity, @position.Position(new_pos))
+          let new_button = {
+            ..button,
+            area: { ..button.area, position: new_pos },
+          }
+          buttons.set(entity, new_button)
+
+          visible_unit_count = visible_unit_count + 1
+        } else {
+          sprite.visible = false
+        }
+      }
+    }
   }
 }
 fn update_detail_panel() -> Unit {
@@ -544,68 +569,81 @@ fn update_detail_panel() -> Unit {
     }
   }
 }
-fn update_selected_squad_display() -> Unit {
-  //清理上一帧的旧肖像和旧的删除按钮
-  for entity in selected_squad_display_entities.val {
-    if buttons.get(entity) is Some(_) { 
-      let _ = buttons.remove(entity)
-    }
-    if @sprite.sprites.get(entity) is Some(_) { 
-      let _ = @sprite.sprites.remove(entity) 
-    }
-    @system.Entity::destroy(entity)
-  }
-  selected_squad_display_entities.val = []
-
-  //创建新肖像和对应的删除按钮
+fn setup_squad_display_slots() -> Unit {
   let start_x_1 = 1000.0
   let start_y_1 = 350.0
   let start_x_2 = 1150.0
   let start_y_2 = 650.0
   let spacing = 150.0
-  let mut i = 0
-  for unit_type in selected_squad.val {
-    let def = unit_definitions.get(unit_type).unwrap()
+  for i in 0 ..< 6 {
     let i_double = i.to_double()
     let mut pos = @math.Vec2D(start_x_1 , start_y_1 + i_double * spacing)
     if i >=3 { pos = @math.Vec2D(start_x_2 , start_y_2 - (i_double-3) * spacing) }
 
-    //创建单位肖像
     let portrait_entity = @system.Entity::new()
     @position.positions.set(portrait_entity, pos)
-    
-    let (base_shape, offset, _) = match def.shape_tag {
-      UnitShape::Square =>   (@sprite.Shape::rect(40.0, 40.0, 0), @math.Vec2D(-20, -20), 0.0)
-      UnitShape::Triangle => (@sprite.Shape::triangle(40.0, 0.0), @math.Vec2D(0.0, 0.0), 13.0)
-      UnitShape::Circle =>   (@sprite.Shape::circle(20.0), @math.Vec2D(0.0, 0.0), 0.0)
-    }
-    let color_str = gdd_color_palette.get(def.color_tag).unwrap_or("#FFFFFF")
-    let colored_shape = @sprite.ColoredShape::new(base_shape, @sprite.DrawStyle::fill(color_str))
-    let sprite = @sprite.Sprite::from_shape(colored_shape, 2, layer=@sprite.RenderLayer::ui(), offset=offset)
-    
+    let temp_shape = @sprite.ColoredShape::new(@sprite.Shape::circle(1.0), @sprite.DrawStyle::fill("transparent"))
+    let sprite = @sprite.Sprite::from_shape(temp_shape, 2, layer=@sprite.RenderLayer::ui())
+    sprite.visible = false // 默认不可见
     @sprite.sprites.set(portrait_entity, sprite)
     @ui.uis.set(portrait_entity, @ui.Ui::new())
-    selected_squad_display_entities.val.push(portrait_entity)
     
-    //为每个肖像创建一个删除按钮
     let delete_button_entity = @system.Entity::new()
-    let delete_button_pos = @math.Vec2D(pos.0 + 35.0, pos.1 - 15.0)
+    let delete_button_pos = @math.Vec2D(pos.0 + 20.0, pos.1 - 20.0)
     @position.positions.set(delete_button_entity, delete_button_pos)
-    let delete_text = @sprite.Text::new("X", font="bold 20px mplus_hzk", color="pink")
-    let delete_sprite = @sprite.Sprite::from_text(delete_text, 10, layer=@sprite.RenderLayer::ui())
+    let delete_layout = @system.TextLayout::new("X", font="bold 16px mplus_hzk", color="pink")
+    let delete_sprite = @sprite.Sprite::from_text_layout(delete_layout, 10, layer=@sprite.RenderLayer::ui())
+    delete_sprite.visible = false // 默认不可见
     @sprite.sprites.set(delete_button_entity, delete_sprite)
     @ui.uis.set(delete_button_entity, @ui.Ui::new())
     let delete_button_comp = Button::{
       area: @math.Rect::{ position: delete_button_pos, size: @math.Vec2D(100.0, 100.0) },
-      action: ButtonAction::DeselectUnit(i),
-      normal_appearance: ButtonAppearance::FromText(delete_text),
-      hover_appearance: ButtonAppearance::FromText(delete_text),
+      action: ButtonAction::DeselectUnit(i), // 动作关联的是插槽的索引
+      normal_appearance: ButtonAppearance::FromTextLayout(delete_layout),
+      hover_appearance: ButtonAppearance::FromTextLayout(delete_layout),
       is_hovered: false,
     }
     buttons.set(delete_button_entity, delete_button_comp)
-    selected_squad_display_entities.val.push(delete_button_entity)
     
-    i = i + 1
+    // 将这对实体存入我们的新列表
+    squad_display_slots.val.push({ portrait_entity, delete_button_entity })
+  }
+}
+fn update_selected_squad_display() -> Unit {
+  for i in 0 ..< squad_display_slots.val.length() {
+    let slot = squad_display_slots.val[i]
+    
+    if @sprite.sprites.get(slot.portrait_entity) is Some(portrait_sprite) && 
+    @sprite.sprites.get(slot.delete_button_entity) is Some(delete_sprite) {
+      
+      if i < selected_squad.val.length() {
+        let unit_type = selected_squad.val[i]
+        let def = unit_definitions.get(unit_type).unwrap()
+        
+        let (base_shape, offset, _) = match def.shape_tag {
+          UnitShape::Square =>   (@sprite.Shape::rect(30.0, 30.0, 0.0), @math.Vec2D(-15.0, -15.0), 0.0)
+          UnitShape::Triangle => (@sprite.Shape::triangle(30.0, 0.0), @math.Vec2D(0.0, 0.0), 13.0)
+          UnitShape::Circle =>   (@sprite.Shape::circle(15.0), @math.Vec2D(0.0, 0.0), 0.0)
+        }
+        let color_str = gdd_color_palette.get(def.color_tag).unwrap_or("#FFFFFF")
+        let colored_shape = @sprite.ColoredShape::new(base_shape, @sprite.DrawStyle::fill(color_str))
+        
+        let new_sprite = @sprite.Sprite::from_shape(
+            colored_shape, 
+            portrait_sprite.zindex, 
+            layer=portrait_sprite.layer, 
+            offset=offset
+        )
+        @sprite.sprites.set(slot.portrait_entity, new_sprite)
+        
+        portrait_sprite.visible = true
+        delete_sprite.visible = true
+
+      } else {
+        portrait_sprite.visible = false
+        delete_sprite.visible = false
+      }
+    }
   }
 }
 fn update_synergy_panel() -> Unit {
@@ -727,7 +765,7 @@ pub fn update_ui_system(_backend: &@system.Backend) -> Unit {
   }
 
   if current_ui_state.val == UIState::SquadBuilder {
-    update_squad_builder_grid()
+    update_grid_visibility()
     update_selected_squad_display()
     update_detail_panel() 
     update_synergy_panel()
@@ -743,7 +781,13 @@ pub fn button_system(_backend: &@system.Backend) -> Unit {
   for entry in buttons.iter() {
     let entity = entry.0
     let button = entry.1
-    
+
+    if @sprite.sprites.get(entity) is Some(sprite) {
+      //如果sprite 是不可见的，就直接跳过
+      if !sprite.visible {
+        continue 
+      }
+    }
     let rect_pos = button.area.position
     let rect_size = button.area.size
     

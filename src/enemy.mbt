@@ -42,7 +42,7 @@ fn add_new_grunt(pos: @math.Vec2D) -> Unit {
     crit_rate: 0.0,
     attack_cast_vfx: None,
     area_effect_vfx: None,
-    attack_sfx: Some(EnemyShoot),
+    attack_sfx: Some(EnemyHit),
   })
   all_units.val.push(new_unit)
 }
@@ -72,7 +72,7 @@ fn add_new_tank_enemy(pos: @math.Vec2D) -> Unit {
     crit_rate: 0.05,
     attack_cast_vfx: None,
     area_effect_vfx: None,
-    attack_sfx: Some(PlayerShoot),
+    attack_sfx: Some(EnemyHit),
   })
   all_units.val.push(new_unit)
 }
@@ -103,7 +103,7 @@ fn add_new_archer(pos: @math.Vec2D) -> Unit {
     crit_rate: 0.1,
     attack_cast_vfx: None,
     area_effect_vfx: None,
-    attack_sfx: Some(PlayerShoot),
+    attack_sfx: Some(EnemyShoot),
   })
   all_units.val.push(new_unit)
 }
@@ -139,7 +139,7 @@ fn add_new_bomber(pos: @math.Vec2D) -> Unit {
     crit_rate: 0.05,
     attack_cast_vfx: None,
     area_effect_vfx: None, 
-    attack_sfx: Some(PlayerShoot),
+    attack_sfx: Some(EnemyShoot),
   })
   all_units.val.push(new_unit)
 }
