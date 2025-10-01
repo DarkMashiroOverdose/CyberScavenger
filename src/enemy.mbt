@@ -70,7 +70,7 @@ fn add_new_tank_enemy(pos: @math.Vec2D) -> Unit {
     attack_type: AttackType::AoE,
     aoe_radius: 60.0,
     crit_rate: 0.05,
-    attack_cast_vfx: None,
+    attack_cast_vfx: Some(AoEMeeleRed),
     area_effect_vfx: None,
     attack_sfx: Some(EnemyHit),
   })

@@ -9,6 +9,8 @@ pub enum VFX_Type {
   PoisonCloud
   PoisonCloudRed
   SpeedLow
+  AoEMeeleRed
+  AoEMeeleOrange
 } derive(Eq, Show, Hash)
 
 /// 用一个枚举来描述特效的【静态外观】
@@ -98,7 +100,40 @@ fn setup_vfx_library() -> Unit {
     },
     z_index: 50,
   })
-
+  vfx_library.set(VFX_Type::AoEMeeleRed, {
+    sprite_template: SpriteTemplate::Shape(
+        @sprite.Shape::circle(100.0), 
+        @sprite.DrawStyle::stroke("rgba(219, 3, 3, 0.19)",5.0)),
+    behavior: {
+      // 【核心】指定生命周期模式
+      lifecycle: VFX_Lifecycle::Timer(0.5),
+      dynamic_transform: Some({
+        rotation_speed: 0.5,
+        scale_speed: 10.0,
+        scale_amplitude: 0.1,
+        _current_angle: 0.0,
+        _time_elapsed: 0.0,
+      }),
+    },
+    z_index: 50,
+  })
+  vfx_library.set(VFX_Type::AoEMeeleOrange, {
+    sprite_template: SpriteTemplate::Shape(
+        @sprite.Shape::circle(100.0), 
+        @sprite.DrawStyle::stroke("rgba(255, 137, 2, 0.66)",5.0)),
+    behavior: {
+      // 【核心】指定生命周期模式
+      lifecycle: VFX_Lifecycle::Timer(0.5),
+      dynamic_transform: Some({
+        rotation_speed: 0.5,
+        scale_speed: 10.0,
+        scale_amplitude: 0.1,
+        _current_angle: 0.0,
+        _time_elapsed: 0.0,
+      }),
+    },
+    z_index: 50,
+  })
   vfx_library.set(VFX_Type::SpeedLow, {
     sprite_template: SpriteTemplate::Shape(
         @sprite.Shape::rect(5,5,0.775), 

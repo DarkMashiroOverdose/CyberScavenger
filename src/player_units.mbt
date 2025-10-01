@@ -63,16 +63,16 @@ fn add_new_orange_square(pos: @math.Vec2D) -> @system.Entity {
   healths.set(new_unit, { current: 10.0, max: 10.0, bar_bg_entity: bar_bg, bar_fg_entity: bar_fg })
 
   combat_stats.set(new_unit, {
-    attack_range: 40.0, 
+    attack_range: 100.0, 
     attack_type: AttackType::AoE, 
-    aoe_radius: 40.0,
-    on_hit_effects: [OnHitEffect::DealDamage(10.0,None)], 
+    aoe_radius: 100.0,
+    on_hit_effects: [OnHitEffect::DealDamage(10.0,None),OnHitEffect::Knockback(15)], 
     attack_cooldown: 5.0, 
     
     current_cooldown: 0.0, 
-    aggro_range: 40.0, 
+    aggro_range: 100.0, 
     crit_rate: 0.0,
-    attack_cast_vfx: None,    
+    attack_cast_vfx: Some(AoEMeeleOrange),    
     area_effect_vfx: None,
     attack_sfx: Some(PlayerShoot), 
   })
@@ -102,7 +102,8 @@ fn add_new_orange_triangle(pos: @math.Vec2D) -> @system.Entity {
           [OnHitEffect::DealDamage(2.0, None)],
           100.0, 
           None,
-        )
+        ),
+        OnHitEffect::Knockback(15)
     ],
     attack_cooldown: 1.0,
     
@@ -138,7 +139,8 @@ fn add_new_orange_circle(pos: @math.Vec2D) -> @system.Entity {
           [OnHitEffect::DealDamage(1.0, None)],
           100.0, 
           None,
-        )
+        ),
+        OnHitEffect::Knockback(15)
     ],
     attack_cooldown: 1.0,
     
@@ -173,7 +175,8 @@ fn add_new_purple_square(pos: @math.Vec2D) -> @system.Entity {
           [OnHitEffect::DealDamage(1.0, None)],
           100.0, 
           None,
-        )
+        ),
+        OnHitEffect::Knockback(15)
     ],
     attack_cooldown: 1.0,
     
@@ -209,7 +212,8 @@ fn add_new_purple_triangle(pos: @math.Vec2D) -> @system.Entity {
           [OnHitEffect::DealDamage(1.0, None)],
           100.0, 
           None,
-        )
+        ),
+        OnHitEffect::Knockback(15)
     ],
     attack_cooldown: 1.0,
     
@@ -245,7 +249,8 @@ fn add_new_purple_circle(pos: @math.Vec2D) -> @system.Entity {
           [OnHitEffect::DealDamage(1.0, None)],
           100.0, 
           None,
-        )
+        ),
+        OnHitEffect::Knockback(15)
     ],
     attack_cooldown: 1.0,
     
@@ -281,6 +286,7 @@ fn add_new_green_square(pos: @math.Vec2D) -> @system.Entity {
           5.0,
           Some(PoisonCloud)
         ),
+        OnHitEffect::Knockback(15)
     ],
     attack_cooldown: 1.0,
     
@@ -317,6 +323,7 @@ fn add_new_green_triangle(pos: @math.Vec2D) -> @system.Entity {
           5.0,
           Some(PoisonCloud)
         ),
+        OnHitEffect::Knockback(15)
     ],
     attack_cooldown: 5.0,
     
@@ -352,7 +359,8 @@ fn add_new_green_circle(pos: @math.Vec2D) -> @system.Entity {
           [OnHitEffect::DealDamage(1.0, None)],
           100.0, 
           None,
-        )
+        ),
+        OnHitEffect::Knockback(15)
     ],
     attack_cooldown: 1.0,
     
@@ -416,7 +424,8 @@ fn add_new_blue_triangle(pos: @math.Vec2D) -> @system.Entity {
           [OnHitEffect::DealDamage(1.0, None)],
           100.0, 
           None,
-        )
+        ),
+        OnHitEffect::Knockback(15)
     ],
     attack_cooldown: 1.0,
     
@@ -452,7 +461,8 @@ fn add_new_blue_circle(pos: @math.Vec2D) -> @system.Entity {
           [OnHitEffect::DealDamage(1.0, None)],
           100.0, 
           None,
-        )
+        ),
+        OnHitEffect::Knockback(15)
     ],
     attack_cooldown: 1.0,
     
