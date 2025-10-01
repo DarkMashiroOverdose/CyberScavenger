@@ -756,6 +756,8 @@ pub fn button_system(_backend: &@system.Backend) -> Unit {
     
     //只在悬停状态发生改变时，才更新Sprite
     if is_inside != button.is_hovered {
+      println("Hovered")
+      sfx_requests.val.push({ sfx_type: Select, position: None })
       button.is_hovered = is_inside
       
       let new_appearance_to_show = if is_inside {
@@ -823,6 +825,10 @@ pub fn button_system(_backend: &@system.Backend) -> Unit {
       }
     }
     if is_inside && @system.is_mouse_just_pressed(@system.MouseButton::Left) {
+      sfx_requests.val.push({
+        sfx_type: SFX_Type::Select, // 使用你已有的 Select 类型
+        position: None
+      })
       match button.action {
         ButtonAction::SwitchState(target_state) => {
           current_ui_state.val = target_state

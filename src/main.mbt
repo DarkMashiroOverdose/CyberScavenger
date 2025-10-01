@@ -8,22 +8,23 @@ fn main {
     .with_canvas_height(720.0)
     .with_fps(60)
     .add_system(init_game, schedule=@system.Schedule::Startup)    
+    
     // 注册UI逻辑更新
     .add_system(button_system, schedule=@system.Schedule::Update)
     .add_system(update_ui_system, schedule=@system.Schedule::Update)
     //游戏运行
+    
     .add_system(update_logic_system, schedule=@system.Schedule::Update)
     
     .add_system(@system.advanced_key_system, schedule=@system.Schedule::Update)
     .add_system(@system.advanced_mouse_system, schedule=@system.Schedule::Update)
-
     .add_system(pause_toggle_system, schedule=@system.Schedule::Update)
 
     .add_system(update_health_bars_system, schedule=@system.Schedule::Update)
 
     .add_system(@sprite.render_world_system, schedule=@system.Schedule::Render(0)) // 先画世界
     .add_system(@sprite.render_ui_system, schedule=@system.Schedule::Render(1)) // 再画UI
-    
+    .add_system(audio_spawner_system, schedule=@system.Schedule::Update)
     .run()
 }
 let is_paused: Ref[Bool] = Ref::new(false)
@@ -67,6 +68,7 @@ pub fn update_game_world_system(backend: &@system.Backend) -> Unit {
   player_train_management_system(backend)
   // 玩家输入，决定火车头的移动方向
   player_control_system(backend)
+  wall_bounce_system(backend, MAP_WIDTH, MAP_HEIGHT)
   // AI输入，决定敌人的移动方向
   enemy_movement_system(backend)
   // AI索敌，决定攻击目标
@@ -108,12 +110,12 @@ pub fn update_game_world_system(backend: &@system.Backend) -> Unit {
 fn init_game(backend: &@system.Backend) -> Unit {
   add_map()
   setup_vfx_library()
-
+  setup_sfx_library()
   // 在游戏开始时播放并保存 BGM 句柄
   let handle = @audio.play_audio(
     backend,
     "../assets/sfx/inst.mp3", // BGM 文件路径
-    volume=0.1,               // 背景音乐音量通常小一些
+    volume=0.0,               // 背景音乐音量通常小一些
     loop_=true,               // 背景音乐需要循环播放
   )
   bgm_handle.val = Some(handle)

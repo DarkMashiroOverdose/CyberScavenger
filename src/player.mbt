@@ -210,3 +210,28 @@ fn relink_train_chain(dead_unit: @system.Entity) -> Unit {
     }
   }
 }
+
+pub fn wall_bounce_system(_backend: &@system.Backend, w: Double, h: Double) -> Unit {
+  if player_head.val is Some(head_entity) {
+    if @position.positions.get(head_entity) is Some(pos) {
+      
+      let current_pos = pos.0
+      let mut facing_vec = player_facing_vector.val
+
+      // 1. 检测是否碰到或越过左右边界
+      if (current_pos[X] <= 10.0 && facing_vec[X] < 0.0) || 
+         (current_pos[X] >= w - 10. && facing_vec[X] > 0.0) {
+        facing_vec = facing_vec.update(X, -facing_vec[X]) // X方向反弹
+      }
+
+      // 2. 检测是否碰到或越过上下边界
+      if (current_pos[Y] <= 10.0 && facing_vec[Y] < 0.0) ||
+         (current_pos[Y] >= h - 10. && facing_vec[Y] > 0.0) {
+        facing_vec = facing_vec.update(Y, -facing_vec[Y])
+      }
+
+      // 3. 将修正后的新方向写回全局状态
+      player_facing_vector.val = facing_vec
+    }
+  }
+}

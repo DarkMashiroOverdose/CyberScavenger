@@ -15,7 +15,7 @@ struct Projectile {
 /// 存储所有飞行中的抛射物
 let projectiles: Map[@system.Entity, Projectile] = Map::new()
 
-/// 全新函数：专门处理抛射物攻击的执行逻辑
+/// 专门处理抛射物攻击的执行逻辑
 fn execute_bullet_attack(attacker: @system.Entity, target: @system.Entity, stats: CombatStats) -> Unit {
   println("[Log] Executing Bullet Attack from \{attacker} to \{target}")
   
@@ -74,6 +74,18 @@ pub fn projectile_system(_backend: &@system.Backend) -> Unit {
       
       if @position.positions.get(bullet) is Some(bullet_pos) &&
          @velocity.velocities.get(bullet) is Some(bullet_vel) {
+
+        let current_pos = bullet_pos.0
+        if current_pos[X] < 0.0 || current_pos[X] > MAP_WIDTH ||
+           current_pos[Y] < 0.0 || current_pos[Y] > MAP_HEIGHT {
+          
+          // 如果子弹飞出边界，就将它清理掉
+          projectiles.remove(bullet)
+          entities_to_cleanup.val.push(bullet)
+          
+          // 使用 continue 跳过后续所有对此子弹的处理，提高效率
+          continue 
+        }
 
         // --- 1. 制导逻辑：动态寻找最近的目标进行追踪 ---
         let mut closest_target_for_guidance = None

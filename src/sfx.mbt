@@ -5,9 +5,12 @@ let bgm_handle: Ref[Option[@system.AudioHandle]] = Ref::new(None)
 /// 定义所有音效的类型
 pub enum SFX_Type {
   PlayerShoot
+  EnemyShoot
   EnemyHit
   Explosion
   UITick
+  Dead
+  Select
 } derive(Eq, Show, Hash)
 
 /// 定义一个音效的静态属性
@@ -22,12 +25,27 @@ pub let sfx_library: Map[SFX_Type, SFX_Template] = Map::new()
 
 pub fn setup_sfx_library() -> Unit {
   sfx_library.set(SFX_Type::PlayerShoot, {
+    path: "../assets/sfx/Shoot.wav",
+    default_volume: 1.0,
+  })
+
+  sfx_library.set(SFX_Type::EnemyShoot, {
     path: "../assets/sfx/Shoot8.wav",
     default_volume: 1.0,
   })
 
   sfx_library.set(SFX_Type::EnemyHit, {
     path: "../assets/sfx/Blip.wav",
+    default_volume: 0.8,
+  })
+
+  sfx_library.set(SFX_Type::Select, {
+    path: "../assets/sfx/Blip.wav",
+    default_volume: 0.8,
+  })
+
+  sfx_library.set(SFX_Type::Dead, {
+    path: "../assets/sfx/Dead.wav",
     default_volume: 0.8,
   })
   // ... 在这里注册所有其他的音效 ...

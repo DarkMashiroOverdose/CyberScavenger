@@ -74,7 +74,7 @@ fn add_new_orange_square(pos: @math.Vec2D) -> @system.Entity {
     crit_rate: 0.0,
     attack_cast_vfx: None,    
     area_effect_vfx: None,
-    attack_sfx: None, 
+    attack_sfx: Some(PlayerShoot), 
   })
 
   all_units.val.push(new_unit)
