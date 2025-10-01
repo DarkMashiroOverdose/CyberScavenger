@@ -115,7 +115,7 @@ fn init_game(backend: &@system.Backend) -> Unit {
   let handle = @audio.play_audio(
     backend,
     "../assets/sfx/inst.mp3", // BGM 文件路径
-    volume=0.0,               // 背景音乐音量通常小一些
+    volume=0.1,               // 背景音乐音量通常小一些
     loop_=true,               // 背景音乐需要循环播放
   )
   bgm_handle.val = Some(handle)

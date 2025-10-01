@@ -30,12 +30,12 @@ pub fn setup_sfx_library() -> Unit {
   })
 
   sfx_library.set(SFX_Type::EnemyShoot, {
-    path: "../assets/sfx/Shoot8.wav",
+    path: "../assets/sfx/Shoot.wav",
     default_volume: 1.0,
   })
 
   sfx_library.set(SFX_Type::EnemyHit, {
-    path: "../assets/sfx/Blip.wav",
+    path: "../assets/sfx/Hit.wav",
     default_volume: 0.8,
   })
 

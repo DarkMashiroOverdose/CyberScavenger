@@ -133,7 +133,9 @@ fn combat_system(backend: &@system.Backend) -> Unit {
   // 处理死亡单位
   for unit in all_units.val {
     if unit.is_alive() {
+
       if healths.get(unit) is Some(health) && health.current <= 0.0 {
+        sfx_requests.val.push({sfx_type: Dead, position: None})
         // 将死亡单位加入待清理列表，交由 cleanup_system 处理。
         entities_to_cleanup.val.push(unit)
         // 将血量设为-1，防止下一帧被重复添加。
@@ -326,6 +328,12 @@ fn apply_damage(attacker: @system.Entity, target: @system.Entity, base_damage: D
         final_damage = base_damage * 2.0
         println("[Log] Critical Hit!")
       }
+    }
+    if @position.positions.get(target) is Some(target_pos) {
+      sfx_requests.val.push({
+        sfx_type: SFX_Type::EnemyHit,
+        position: Some(target_pos.0),
+      })
     }
     let new_health = { ..health, current: health.current - final_damage }
     healths.set(target, new_health)

@@ -67,7 +67,7 @@ fn add_new_orange_square(pos: @math.Vec2D) -> @system.Entity {
     attack_type: AttackType::AoE, 
     aoe_radius: 100.0,
     on_hit_effects: [OnHitEffect::DealDamage(10.0,None),OnHitEffect::Knockback(15)], 
-    attack_cooldown: 5.0, 
+    attack_cooldown: 2.0, 
     
     current_cooldown: 0.0, 
     aggro_range: 100.0, 
