@@ -25,9 +25,9 @@ fn attach_health_bar() -> (@system.Entity, @system.Entity) {
   let fg_color_rect = @sprite.ColorRect::new(@math.Vec2D(HEALTH_BAR_WIDTH, HEALTH_BAR_HEIGHT), "lime")
 
   let bg_sprite = @sprite.Sprite::from_color_rect(
-    bg_color_rect, 110, layer=@sprite.RenderLayer::ui())
+    bg_color_rect, 8, layer=@sprite.RenderLayer::ui())
   let fg_sprite = @sprite.Sprite::from_color_rect(
-    fg_color_rect, 111, layer=@sprite.RenderLayer::ui())
+    fg_color_rect, 9, layer=@sprite.RenderLayer::ui())
     
   @sprite.sprites.set(bar_bg, bg_sprite)
   @sprite.sprites.set(bar_fg, fg_sprite)

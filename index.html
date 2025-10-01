@@ -71,7 +71,6 @@
     </script>
 
     <script>
-        // WebGL 辅助函数 (initWebGL, renderWebGL, loadShader) (不变)
         let gl; let shaderProgram; let positionBuffer; let textureCoordBuffer;
         let gameTexture; let pixelSizeUniformLocation; let pixelSize = 5.0;
         function initWebGL(gameCanvas) {
@@ -133,11 +132,9 @@
         }
 
         function startPostProcessingLoop() {
-            // 获取 game-canvas 作为 WebGL 的纹理来源
             const gameCanvas = document.getElementById('game-canvas');
 
             if (!gameCanvas) { 
-                // 如果画布还没加载出来，稍后重试
                 setTimeout(startPostProcessingLoop, 100); 
                 return; 
             }

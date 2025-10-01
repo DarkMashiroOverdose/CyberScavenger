@@ -294,6 +294,7 @@ fn setup_main_menu_ui() -> Unit {
 }
 let score_display_entity: Ref[Option[@system.Entity]] = Ref::new(None)
 let wave_display_entity: Ref[Option[@system.Entity]] = Ref::new(None)
+let tutorial_text_entity: Ref[Option[@system.Entity]] = Ref::new(None)
 fn setup_ingame_hud() -> Unit {
   let score_label = @system.Entity::new()
   @position.positions.set(score_label, @math.Vec2D(100.0, 70.0))
@@ -329,6 +330,22 @@ fn setup_ingame_hud() -> Unit {
 
   ui_entities.val.push(wave_label)
   wave_display_entity.val = Some(wave_label)
+  let tutorial_label = @system.Entity::new()
+  @position.positions.set(tutorial_label, @math.Vec2D(200.0, 680.0))
+  
+  let tutorial_layout = @system.TextLayout::new(
+    "按“A”键可左转，按“D”键可右转，按“P”键可暂停", 
+    font="36px mplus_hzk", 
+    color="gray", 
+    align=@system.TextAlign::center()
+  )
+  let tutorial_sprite = @sprite.Sprite::from_text_layout(tutorial_layout, 100, layer=@sprite.RenderLayer::ui())
+  
+  @sprite.sprites.set(tutorial_label, tutorial_sprite)
+  @ui.uis.set(tutorial_label, @ui.Ui::new())
+
+  ui_entities.val.push(tutorial_label)
+  tutorial_text_entity.val = Some(tutorial_label)
 }
 pub fn update_wave_display_system(_backend: &@system.Backend) -> Unit {
   if current_ui_state.val == UIState::InGame {
@@ -362,6 +379,15 @@ pub fn update_wave_display_system(_backend: &@system.Backend) -> Unit {
             )
             @sprite.sprites.set(entity, new_sprite)
           }
+        }
+      }
+    }
+
+    if tutorial_text_entity.val is Some(entity) {
+      if @sprite.sprites.get(entity) is Some(sprite) {
+        if wave_count.val > 0 && sprite.visible {
+          sprite.visible = false
+          println("【游戏逻辑】: 第一波已开始，隐藏操作提示。")
         }
       }
     }
@@ -411,16 +437,17 @@ fn setup_squad_builder_ui() -> Unit {
   ui_entities.val.push(title)
   
   let confirm_entity = @system.Entity::new()
-  @position.positions.set(confirm_entity, @math.Vec2D(300.0, 450.0))
+  @position.positions.set(confirm_entity, @math.Vec2D(480.0, 450.0))
   let confirm_text = @sprite.Text::new("[确认队伍并开始]", font="32px mplus_hzk")
+  let confirm_text_hl = @sprite.Text::new("[确认队伍并开始]", font="32px mplus_hzk",color="yellow")
   let confirm_sprite = @sprite.Sprite::from_text(confirm_text, 1, layer=@sprite.RenderLayer::ui())
   @sprite.sprites.set(confirm_entity, confirm_sprite)
   @ui.uis.set(confirm_entity, @ui.Ui::new())
   let confirm_button_comp = Button::{
-      area: @math.Rect::{ position: @math.Vec2D(300.0, 450.0), size: @math.Vec2D(300.0, 50.0) },
+      area: @math.Rect::{ position: @math.Vec2D(480.0, 450.0), size: @math.Vec2D(500.0, 50.0) },
       action: ButtonAction::SwitchState(UIState::InGame),
       normal_appearance: ButtonAppearance::FromText(confirm_text),
-      hover_appearance: ButtonAppearance::FromText(confirm_text),
+      hover_appearance: ButtonAppearance::FromText(confirm_text_hl),
       is_hovered: false,
   }
   buttons.set(confirm_entity, confirm_button_comp)
@@ -533,7 +560,7 @@ fn setup_game_over_ui() -> Unit {
     color="red",
     align=@system.TextAlign::center()
   )
-  let sprite = @sprite.Sprite::from_text_layout(layout, 10, layer=@sprite.RenderLayer::ui())
+  let sprite = @sprite.Sprite::from_text_layout(layout, 15, layer=@sprite.RenderLayer::ui())
   @sprite.sprites.set(game_over_title, sprite)
   @ui.uis.set(game_over_title, @ui.Ui::new())
   ui_entities.val.push(game_over_title)
@@ -547,8 +574,16 @@ fn setup_game_over_ui() -> Unit {
     color="white",
     align=@system.TextAlign::center()
   )
-  let score_sprite = @sprite.Sprite::from_text_layout(score_layout, 10, layer=@sprite.RenderLayer::ui())
+  let score_sprite = @sprite.Sprite::from_text_layout(score_layout, 15, layer=@sprite.RenderLayer::ui())
   
+  let game_over_background = @system.Entity::new()
+  @position.positions.set(game_over_background, @math.Vec2D(0.0, 0.0))
+  let background = @sprite.ColoredShape::new(@sprite.Shape::rect(1300,800,0.0), @sprite.DrawStyle::fill("rgba(125, 125, 125, 0.50)"))
+  let sprite = @sprite.Sprite::from_shape(background, 10, layer=@sprite.RenderLayer::ui())
+  @sprite.sprites.set(game_over_background, sprite)
+  @ui.uis.set(game_over_background, @ui.Ui::new())
+  ui_entities.val.push(game_over_background)
+
   @sprite.sprites.set(final_score_entity, score_sprite)
   @ui.uis.set(final_score_entity, @ui.Ui::new())
   ui_entities.val.push(final_score_entity)
@@ -556,7 +591,7 @@ fn setup_game_over_ui() -> Unit {
   let back_button = @system.Entity::new()
   @position.positions.set(back_button, @math.Vec2D(640.0, 450.0))
   let back_layout = @system.TextLayout::new("[ 返回主菜单 ]", font="32px mplus_hzk", color="white")
-  let back_sprite = @sprite.Sprite::from_text_layout(back_layout, 10, layer=@sprite.RenderLayer::ui())
+  let back_sprite = @sprite.Sprite::from_text_layout(back_layout, 15, layer=@sprite.RenderLayer::ui())
   @sprite.sprites.set(back_button, back_sprite)
   @ui.uis.set(back_button, @ui.Ui::new())
   let button_comp = Button::{
