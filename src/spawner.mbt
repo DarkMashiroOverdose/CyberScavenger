@@ -2,7 +2,7 @@ const MAP_WIDTH: Double = 1280.0
 const MAP_HEIGHT: Double = 720.0
 // 敌人生成在屏幕外的一个缓冲距离
 const SPAWN_PADDING: Double = 50.0
-
+const HEAL_WAVE_INTERVAL: Int = 5
 // --- 敌人生成器状态 ---
 // 两波敌人之间的间隔时间（秒）
 const INITIAL_SPAWN_INTERVAL: Double = 10.0 
@@ -53,12 +53,36 @@ pub fn endless_spawner_system(_backend: &@system.Backend) -> Unit {
       EnemyType::Archer, EnemyType::Archer,
       EnemyType::TankEnemy,
     ]
+    if wave_count.val > 0 && wave_count.val % HEAL_WAVE_INTERVAL == 0 {
+      heal_all_player_units()
+    }
 
     for _i = 0; _i < num_to_spawn; _i = _i + 1 {
       let random_index = global_rng.int(limit=enemy_pool.length())
       let enemy_to_spawn = enemy_pool[random_index]
       let spawn_pos = get_random_edge_position()
       spawn_enemy(enemy_to_spawn, spawn_pos)
+    }
+  }
+}
+
+fn heal_all_player_units() -> Unit {
+  println("【游戏逻辑】: 触发全队治疗！")
+  
+  for unit in all_units.val {
+    if unit.is_alive() && teams.get(unit) == Some(Team::Player) {
+      if healths.get(unit) is Some(current_health) {
+        
+        if current_health.current < current_health.max {
+          
+          let full_health_component = {
+            ..current_health, 
+            current: current_health.max,
+          }
+          healths.set(unit, full_health_component)
+          println("  - 单位 \{unit} 已恢复至满血。")
+        }
+      }
     }
   }
 }

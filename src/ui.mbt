@@ -316,9 +316,9 @@ fn setup_ingame_hud() -> Unit {
   
   let wave_layout = @system.TextLayout::new(
     "Wave: 0", 
-    font="bold 32px mplus_hzk", 
+    font="bold 24px mplus_hzk", 
     color="white",
-    line_height = 35.0,
+    line_height = 26.0,
     max_width= Some(500.0),
     align=@system.TextAlign::right()
   )
@@ -337,12 +337,14 @@ pub fn update_wave_display_system(_backend: &@system.Backend) -> Unit {
         if old_sprite.sprite_type is @sprite.SpriteType::TextLayout(old_layout) {
           let seconds_to_next_wave = max_double(0.0, spawn_timer.val).to_int()
 
-          let new_wave_text = if wave_count.val == 0 {
+          let mut new_wave_text = if wave_count.val == 0 {
             "首波敌人还有 \{seconds_to_next_wave} 秒来袭"
           } else {
             "目前第 \{wave_count.val} 波\n下一波敌人还有 \{seconds_to_next_wave} 秒来袭"
           }
-          
+          let mut waves_until_heal = HEAL_WAVE_INTERVAL - wave_count.val % HEAL_WAVE_INTERVAL
+          if waves_until_heal == 0 { waves_until_heal = HEAL_WAVE_INTERVAL }
+          new_wave_text = new_wave_text + "\n距下次全队治疗还有 \{waves_until_heal} 波"
           if old_layout.content != new_wave_text {
             let new_layout = @system.TextLayout::new(
               new_wave_text,
