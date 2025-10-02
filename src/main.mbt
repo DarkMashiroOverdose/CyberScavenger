@@ -115,14 +115,7 @@ fn init_game(backend: &@system.Backend) -> Unit {
   add_map()
   setup_vfx_library()
   setup_sfx_library()
-  // 在游戏开始时播放并保存 BGM 句柄
-  let handle = @audio.play_audio(
-    backend,
-    "../assets/sfx/inst.mp3", // BGM 文件路径
-    volume=0.1,               // 背景音乐音量通常小一些
-    loop_=true,               // 背景音乐需要循环播放
-  )
-  bgm_handle.val = Some(handle)
+
 
   spawn_timer.val = INITIAL_SPAWN_INTERVAL
   wave_count.val = 0

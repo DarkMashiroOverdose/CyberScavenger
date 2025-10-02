@@ -31,6 +31,7 @@ pub enum ButtonAction {
   DeselectUnit(Int)
   SetSynergyFilter(Option[SynergyTag]) // 设置颜色筛选
   SetShapeFilter(Option[UnitShape])   // 设置形状筛选
+  UnlockAudio
   
 }
 
@@ -181,6 +182,49 @@ let kanban_girl_animation: @sprite.Animation = @sprite.Animation::new(kanban_gir
 
 fn setup_main_menu_ui() -> Unit {
   println("【调试日志 D】: 正在创建【主菜单】UI...")
+
+  if !audio_unlocked.val {
+    println("【音频】: 音频未解锁，正在创建提示界面...")
+
+    let overlay = @system.Entity::new()
+    @position.positions.set(overlay, @math.Vec2D(0.0, 0.0))
+    let shape = @sprite.ColoredShape::new(
+        @sprite.Shape::rect(1280.0, 720.0, 0.0), 
+        @sprite.DrawStyle::fill("rgba(0, 0, 0, 0.7)")
+    )
+    let sprite = @sprite.Sprite::from_shape(shape, 998, layer=@sprite.RenderLayer::ui())
+    
+    @sprite.sprites.set(overlay, sprite)
+
+    @ui.uis.set(overlay, @ui.Ui::new())
+    ui_entities.val.push(overlay)
+
+    let prompt_text = @system.Entity::new()
+    @position.positions.set(prompt_text, @math.Vec2D(0.0, 360.0))
+    let layout = @system.TextLayout::new(
+      "请点击屏幕任意位置以开启声音与音效",
+      font="bold 32px mplus_hzk",
+      color="white",
+      max_width=Some(1280.0),
+      align=@system.TextAlign::center()
+    )
+    let text_sprite = @sprite.Sprite::from_text_layout(layout, 999, layer=@sprite.RenderLayer::ui())
+    @sprite.sprites.set(prompt_text, text_sprite)
+    @ui.uis.set(prompt_text, @ui.Ui::new())
+    ui_entities.val.push(prompt_text)
+
+    let unlock_button_entity = @system.Entity::new()
+    let button_comp = Button::{
+      area: @math.Rect::{ position: @math.Vec2D(640.0, 360.0), size: @math.Vec2D(1280.0, 720.0) },
+      action: ButtonAction::UnlockAudio,
+      normal_appearance: ButtonAppearance::FromPicture("", @math.Vec2D(0.0, 0.0)),
+      hover_appearance: ButtonAppearance::FromPicture("", @math.Vec2D(0.0, 0.0)),
+      is_hovered: false,
+    }
+    buttons.set(unlock_button_entity, button_comp)
+    ui_entities.val.push(unlock_button_entity)
+  }
+
   let title_entity =  @system.Entity::new()
   @position.positions.set(title_entity, @math.Vec2D(450.0, 200.0))
   //let title_picture = @sprite.Picture::new(@math.Vec2D(800.0, 300.0), "assets/gui/start_menu/title.png")
@@ -1003,7 +1047,7 @@ pub fn update_ui_system(_backend: &@system.Backend) -> Unit {
   }
 }
 
-pub fn button_system(_backend: &@system.Backend) -> Unit {
+pub fn button_system(backend: &@system.Backend) -> Unit {
   //获取实时鼠标位置
   let mouse_pos = @system.mouse.pos
   let mut found_hovered_unit = false
@@ -1133,6 +1177,22 @@ pub fn button_system(_backend: &@system.Backend) -> Unit {
           println("【筛选】: 形状筛选已设置为 \{shape_tag}")
           return
         }
+        ButtonAction::UnlockAudio => {
+        if !audio_unlocked.val {
+          println("【音频】: 首次交互，解锁并播放BGM...")
+          audio_unlocked.val = true
+          let handle = @audio.play_audio(
+            backend,
+            "../assets/sfx/inst.mp3",
+            volume=0.1,
+            loop_=true,
+          )
+          bgm_handle.val = Some(handle)
+          cleanup_ui()
+          setup_main_menu_ui()
+        }
+        return // 处理完就返回
+      }
       }
     }
   }

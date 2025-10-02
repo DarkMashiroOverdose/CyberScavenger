@@ -1,6 +1,7 @@
 ///用于存储背景音乐句柄的全局变量 ---
 let bgm_handle: Ref[Option[@system.AudioHandle]] = Ref::new(None)
-
+///踪音频是否已被用户交互解锁
+let audio_unlocked: Ref[Bool] = Ref::new(false)
 
 /// 定义所有音效的类型
 pub enum SFX_Type {
