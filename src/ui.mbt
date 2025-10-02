@@ -171,6 +171,14 @@ let title_frames: Array[@sprite.AnimationFrame] = @sprite.frames_from_atlas(
 )
 let title_animation: @sprite.Animation = @sprite.Animation::new(title_frames, loop_=true, rate=0.4)
 
+let kanban_girl_frames: Array[@sprite.AnimationFrame] = @sprite.frames_from_atlas(
+  "assets/gui/start_menu/kanban_girl_animated.png",
+  74, 
+  width=265,
+  height=420.0,
+)
+let kanban_girl_animation: @sprite.Animation = @sprite.Animation::new(kanban_girl_frames, loop_=true, rate=0.2)
+
 fn setup_main_menu_ui() -> Unit {
   println("【调试日志 D】: 正在创建【主菜单】UI...")
   let title_entity =  @system.Entity::new()
@@ -180,6 +188,19 @@ fn setup_main_menu_ui() -> Unit {
   @sprite.sprites.set(title_entity, title_sprite)
   @ui.uis.set(title_entity, @ui.Ui::new())
   ui_entities.val.push(title_entity)
+
+  let kanban_girl_entity =  @system.Entity::new()
+  @position.positions.set(kanban_girl_entity, @math.Vec2D(1200.0, 200.0))
+  let kanban_girl_sprite = @sprite.Sprite::from_animation(kanban_girl_animation, 1, layer=@sprite.RenderLayer::ui(), offset = @math.Vec2D(-400.0, -150.0))
+  @sprite.sprites.set(kanban_girl_entity, kanban_girl_sprite)
+  @ui.uis.set(kanban_girl_entity, @ui.Ui::new())
+  ui_entities.val.push(kanban_girl_entity)
+  let scale_factor = 1.6190
+  let scale_transform = @math.Transform::from_scale(scale_factor, scale_factor)
+  kanban_girl_sprite.transform = kanban_girl_sprite.transform * scale_transform
+  @sprite.sprites.set(kanban_girl_entity, kanban_girl_sprite)
+  @ui.uis.set(kanban_girl_entity, @ui.Ui::new())
+  ui_entities.val.push(kanban_girl_entity)
 
   let start_button_entity = @system.Entity::new()
   @position.positions.set(start_button_entity, @math.Vec2D(230.0, 400.0))
