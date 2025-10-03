@@ -1183,7 +1183,7 @@ pub fn button_system(backend: &@system.Backend) -> Unit {
           audio_unlocked.val = true
           let handle = @audio.play_audio(
             backend,
-            "../assets/sfx/inst.mp3",
+            "assets/sfx/inst.mp3",
             volume=0.1,
             loop_=true,
           )

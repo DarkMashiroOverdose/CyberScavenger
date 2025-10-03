@@ -26,27 +26,27 @@ pub let sfx_library: Map[SFX_Type, SFX_Template] = Map::new()
 
 pub fn setup_sfx_library() -> Unit {
   sfx_library.set(SFX_Type::PlayerShoot, {
-    path: "../assets/sfx/Shoot.wav",
+    path: "assets/sfx/Shoot.wav",
     default_volume: 1.0,
   })
 
   sfx_library.set(SFX_Type::EnemyShoot, {
-    path: "../assets/sfx/Shoot.wav",
+    path: "assets/sfx/Shoot.wav",
     default_volume: 1.0,
   })
 
   sfx_library.set(SFX_Type::EnemyHit, {
-    path: "../assets/sfx/Hit.wav",
+    path: "assets/sfx/Hit.wav",
     default_volume: 0.8,
   })
 
   sfx_library.set(SFX_Type::Select, {
-    path: "../assets/sfx/Blip.wav",
+    path: "assets/sfx/Blip.wav",
     default_volume: 0.8,
   })
 
   sfx_library.set(SFX_Type::Dead, {
-    path: "../assets/sfx/Dead.wav",
+    path: "assets/sfx/Dead.wav",
     default_volume: 0.8,
   })
   // ... 在这里注册所有其他的音效 ...
