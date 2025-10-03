@@ -20,11 +20,14 @@ let selected_unit_for_detail_view: Ref[Option[UnitType]] = Ref::new(None)
 let hovered_unit_for_detail_view: Ref[Option[UnitType]] = Ref::new(None)
 let sticky_unit_for_detail_view: Ref[Option[UnitType]] = Ref::new(None) 
 
-// 新增 #2: 专门用来存放“详情面板”UI实体的列表
 let detail_panel_entities: Ref[Array[@system.Entity]] = Ref::new([])
 let squad_builder_unit_buttons: Ref[Array[@system.Entity]] = Ref::new([])
-
 let synergy_panel_entities: Ref[Array[@system.Entity]] = Ref::new([])
+
+let squad_guide_shown: Ref[Bool] = Ref::new(false)
+
+let current_guide_image_index: Ref[Int] = Ref::new(0)
+
 pub enum ButtonAction {
   SwitchState(UIState)
   SelectUnit(UnitType)
@@ -32,7 +35,7 @@ pub enum ButtonAction {
   SetSynergyFilter(Option[SynergyTag]) // 设置颜色筛选
   SetShapeFilter(Option[UnitShape])   // 设置形状筛选
   UnlockAudio
-  
+  NextGuidePage
 }
 
 pub struct Button {
@@ -485,6 +488,12 @@ fn setup_settings_ui() -> Unit {
 }
 
 fn setup_squad_builder_ui() -> Unit {
+  if !squad_guide_shown.val {
+    println("【UI】: 首次进入组队界面，显示新手引导...")
+    setup_squad_guide_ui()
+  }
+
+
   let squad_background = @system.Entity::new()
   @position.positions.set(squad_background, @math.Vec2D(0.0, 0.0))
   let squad_background_pic = @sprite.Picture::new(@math.Vec2D(1280.0, 720.0), "assets/gui/squad/squad_background.png")
@@ -523,7 +532,53 @@ fn setup_squad_builder_ui() -> Unit {
   setup_squad_display_slots()
 
 }
+let guide_entities: Ref[Array[@system.Entity]] = Ref::new([])
+fn setup_squad_guide_ui() -> Unit {
+  let squad_guide_image_paths: Array[String] = [
+    "assets/gui/guide/squad_guide_01.png",
+    "assets/gui/guide/squad_guide_02.png",
+    "assets/gui/guide/squad_guide_03.png",
+    "assets/gui/guide/squad_guide_04.png",
+    "assets/gui/guide/squad_guide_05.png",
+  ]
+  let guide_image_entity = @system.Entity::new()
+  @position.positions.set(guide_image_entity, @math.Vec2D(0.0, 0.0))
 
+  let current_path = squad_guide_image_paths[current_guide_image_index.val]
+  let sprite = @sprite.Sprite::from_picture(
+    @sprite.Picture::new(@math.Vec2D(1280.0, 720.0), current_path), 
+    999, 
+    layer=@sprite.RenderLayer::ui(),
+    offset=@math.Vec2D(0, 0),
+  )
+  @sprite.sprites.set(guide_image_entity, sprite)
+  @ui.uis.set(guide_image_entity, @ui.Ui::new())
+  guide_entities.val.push(guide_image_entity)
+
+  let guide_button_entity = @system.Entity::new()
+  let button_comp = Button::{
+    area: @math.Rect::{ position: @math.Vec2D(640.0, 360.0), size: @math.Vec2D(1280.0, 720.0) },
+    action: ButtonAction::NextGuidePage,
+    normal_appearance: ButtonAppearance::FromPicture("", @math.Vec2D(0.0, 0.0)),
+    hover_appearance: ButtonAppearance::FromPicture("", @math.Vec2D(0.0, 0.0)),
+    is_hovered: false,
+  }
+  buttons.set(guide_button_entity, button_comp)
+  guide_entities.val.push(guide_button_entity)
+}
+fn cleanup_guide_ui() -> Unit {
+  println("【UI清理】: 正在清理引导页面...")
+  for entity in guide_entities.val {
+    if buttons.get(entity) is Some(_) {
+      let _ = buttons.remove(entity)
+    }
+    if @sprite.sprites.get(entity) is Some(_) {
+      let _ = @sprite.sprites.remove(entity)
+    }
+    @system.Entity::destroy(entity)
+  }
+  guide_entities.val = []
+}
 fn setup_filter_tabs() -> Unit {
   // --- 创建颜色筛选标签 ---
   let synergy_tags_to_show = [
@@ -1178,21 +1233,36 @@ pub fn button_system(backend: &@system.Backend) -> Unit {
           return
         }
         ButtonAction::UnlockAudio => {
-        if !audio_unlocked.val {
-          println("【音频】: 首次交互，解锁并播放BGM...")
-          audio_unlocked.val = true
-          let handle = @audio.play_audio(
-            backend,
-            "assets/sfx/inst.mp3",
-            volume=0.1,
-            loop_=true,
-          )
-          bgm_handle.val = Some(handle)
-          cleanup_ui()
-          setup_main_menu_ui()
+          if !audio_unlocked.val {
+            println("【音频】: 首次交互，解锁并播放BGM...")
+            audio_unlocked.val = true
+            let handle = @audio.play_audio(
+              backend,
+              "assets/sfx/inst.mp3",
+              volume=0.1,
+              loop_=true,
+            )
+            bgm_handle.val = Some(handle)
+            cleanup_ui()
+            setup_main_menu_ui()
+          }
+          return 
         }
-        return // 处理完就返回
-      }
+        ButtonAction::NextGuidePage => {
+          if current_ui_state.val == UIState::SquadBuilder && !squad_guide_shown.val {
+            current_guide_image_index.val = current_guide_image_index.val + 1
+            cleanup_guide_ui() 
+
+            if current_guide_image_index.val < 5 {
+              println("【UI】: 切换到引导页 \{current_guide_image_index.val + 1}")
+              setup_squad_guide_ui()
+            } else {
+              println("【UI】: 组队引导已完成，进入正常组队界面。")
+              squad_guide_shown.val = true 
+            }
+          }
+          return 
+        }
       }
     }
   }
