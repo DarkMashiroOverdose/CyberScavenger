@@ -103,6 +103,7 @@ fn combat_system(backend: &@system.Backend) -> Unit {
                 vfx_type: vfx,
                 position: attacker_pos.0, // 特效在攻击者身上产生
                 rotation: 0.0,
+                parent_entity: None,
               })
             }
 
@@ -252,6 +253,7 @@ fn apply_all_effects(source: @system.Entity, target: @system.Entity, effects: Ar
               vfx_type: vfx_type,
               position: target_pos.0,
               rotation: 0.0,
+              parent_entity: None,
             })
           }
         }
@@ -266,6 +268,7 @@ fn apply_all_effects(source: @system.Entity, target: @system.Entity, effects: Ar
               vfx_type: vfx_type,
               position: target_pos.0,
               rotation: 0.0,
+              parent_entity: Some(target),
             })
           }
         }
@@ -292,6 +295,7 @@ fn apply_all_effects(source: @system.Entity, target: @system.Entity, effects: Ar
               vfx_type: vfx_type,
               position: target_pos.0,
               rotation: 0.0,
+              parent_entity: None,
             })
           }
           apply_effects_in_area(source, target_pos.0, radius, effects_in_area, source_team)
@@ -311,6 +315,7 @@ fn apply_all_effects(source: @system.Entity, target: @system.Entity, effects: Ar
                 vfx_type: vfx_type,
                 position: target_pos.0,
                 rotation: 0.0,
+                parent_entity: Some(target)
               })
             }
           }
@@ -412,6 +417,7 @@ fn spawn_hazardous_area(
       vfx_type: vfx_type,
       position: pos,
       rotation: 0.0,
+      parent_entity: None,
     })
   }
 

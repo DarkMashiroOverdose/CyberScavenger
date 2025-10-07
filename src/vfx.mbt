@@ -160,7 +160,7 @@ fn setup_vfx_library() -> Unit {
   })
   vfx_library.set(VFX_Type::Healing, {
     sprite_template: SpriteTemplate::Shape(
-        @sprite.Shape::cross(10.0,4.0,90.0), 
+        @sprite.Shape::cross(20.0,4.0,90.0), 
         @sprite.DrawStyle::fill("rgba(3, 180, 0, 1)")),
     behavior: {
       // 【核心】指定生命周期模式
@@ -186,6 +186,12 @@ pub struct VFX_Request {
   vfx_type: VFX_Type
   position: @math.Vec2D
   rotation: Double
+  parent_entity: Option[@system.Entity] 
+}
+pub let vfx_follows: Map[@system.Entity, VFX_Follow] = Map::new()
+pub struct VFX_Follow {
+  parent: @system.Entity // 被跟随的父级实体
+  offset: @math.Vec2D   // 相对于父级实体的偏移量（例如，在头顶）
 }
 
 pub let vfx_requests: Ref[Array[VFX_Request]] = Ref::new([])
@@ -202,7 +208,16 @@ pub fn vfx_spawner_system(_backend: &@system.Backend) -> Unit {
   for request in vfx_requests.val {
     if vfx_library.get(request.vfx_type) is Some(template) {
       let vfx_entity = @system.Entity::new()
-      @position.positions.set(vfx_entity, request.position)
+
+       if request.parent_entity is Some(parent) {
+        vfx_follows.set(vfx_entity, { parent: parent, offset: @math.Vec2D::zero() })
+        if @position.positions.get(parent) is Some(parent_pos) {
+          @position.positions.set(vfx_entity, parent_pos.0 + @math.Vec2D::zero())
+        }
+      } else {
+        @position.positions.set(vfx_entity, request.position)
+      }
+
       let sprite_component = match template.sprite_template {
         SpriteTemplate::Picture(path, dims) => {
           let pic = @sprite.Picture::new(dims, path)
@@ -428,4 +443,17 @@ pub fn spawn_kill_score_vfx(score: Int, position: @math.Vec2D) -> Unit {
   })
 
   vfx_instances.set(vfx_entity, VFX_Lifecycle::Timer(1.2))
+}
+
+pub fn vfx_follow_system(_backend: &@system.Backend) -> Unit {
+  for vfx_entity, follow_data in vfx_follows {
+    if follow_data.parent.is_alive() {
+      if @position.positions.get(follow_data.parent) is Some(parent_pos) {
+        @position.positions.set(vfx_entity, parent_pos.0 + follow_data.offset)
+      }
+    } else {
+      entities_to_cleanup.val.push(vfx_entity)
+      vfx_follows.remove(vfx_entity)
+    }
+  }
 }

@@ -97,6 +97,7 @@ pub fn update_game_world_system(backend: &@system.Backend) -> Unit {
   vfx_spawner_system(backend)
   vfx_update_system(backend)
   vfx_movement_system(backend)
+  vfx_follow_system(backend)
   // 将所有单位的`velocity`应用到它们的`position`上
   apply_velocity_system(backend)
   // 为玩家小火车记录轨迹点
