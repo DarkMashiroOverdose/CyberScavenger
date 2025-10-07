@@ -381,6 +381,15 @@ fn add_new_green_circle(pos: @math.Vec2D) -> @system.Entity {
     bullet_color: Some(gdd_color_palette.get(Green).unwrap_or("#FFFFFF"))
   })
 
+  team_abilities.set(new_unit, {
+    effects: [OnHitEffect::Heal(1.0, Some(Healing))], // 效果是治疗1点HP
+    cooldown: 1.0, // 每10秒触发一次
+    current_cooldown: 0, // 初始冷却
+    targeting_rule: TargetingRule::LowestHealthAlly, // 目标规则是血量最低的队友
+    cast_vfx: Some(PoisonCloud), // 可以在这里加上施法特效
+    cast_sfx: None,
+  })
+
   all_units.val.push(new_unit)
   return new_unit
 }

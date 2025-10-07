@@ -76,6 +76,8 @@ pub fn update_game_world_system(backend: &@system.Backend) -> Unit {
   aggro_system(backend)
   // 战斗结算，根据攻击目标和冷却，触发攻击效果
   combat_system(backend)
+  // 处理团队技能的触发和效果应用
+  team_ability_system(backend)  
   // 更新所有飞行中的抛射物（子弹）的位置和方向
   projectile_system(backend)
   // 更新单位的视觉朝向（让Sprite朝向目标或移动方向）

@@ -55,6 +55,9 @@ pub enum OnHitEffect {
 
   /// 击退单位
   Knockback(Double)
+
+  /// 治疗
+  Heal(Double, Option[VFX_Type])
 }
 fn combat_system(backend: &@system.Backend) -> Unit {
   let delta_seconds = 1.0 / 60.0
@@ -298,6 +301,20 @@ fn apply_all_effects(source: @system.Entity, target: @system.Entity, effects: Ar
       Knockback(strength) => {
         apply_knockback(source, target, strength)
       }
+      Heal(amount, vfx_opt) => {
+        if teams.get(source) == teams.get(target) {
+          apply_heal(target, amount)
+        }
+        if vfx_opt is Some(vfx_type) {
+            if @position.positions.get(target) is Some(target_pos) {
+              vfx_requests.val.push({
+                vfx_type: vfx_type,
+                position: target_pos.0,
+                rotation: 0.0,
+              })
+            }
+          }
+      }
       // ... 未来在这里扩展 ...
     }
   }
@@ -448,5 +465,12 @@ pub fn hazardous_area_system(_backend: &@system.Backend) -> Unit {
         hazardous_areas.set(area_entity, final_updated_data)
       }
     }
+  }
+}
+
+fn apply_heal(target: @system.Entity, amount: Double) -> Unit {
+  if healths.get(target) is Some(health) {
+    let new_current_hp = min_double(health.max, health.current + amount)
+    healths.set(target, { ..health, current: new_current_hp })
   }
 }

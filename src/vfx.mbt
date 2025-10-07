@@ -11,6 +11,7 @@ pub enum VFX_Type {
   SpeedLow
   AoEMeeleRed
   AoEMeeleOrange
+  Healing
 } derive(Eq, Show, Hash)
 
 /// 用一个枚举来描述特效的【静态外观】
@@ -157,7 +158,24 @@ fn setup_vfx_library() -> Unit {
     },
     z_index: 120,
   })
-  
+  vfx_library.set(VFX_Type::Healing, {
+    sprite_template: SpriteTemplate::Shape(
+        @sprite.Shape::cross(10.0,4.0,90.0), 
+        @sprite.DrawStyle::fill("rgba(3, 180, 0, 1)")),
+    behavior: {
+      // 【核心】指定生命周期模式
+      lifecycle: VFX_Lifecycle::Timer(0.5),
+      dynamic_transform: Some({
+        is_pulsing_scale: false,
+        rotation_speed: 0.5,
+        scale_speed: 1.0,
+        scale_amplitude: 0.1,
+        _current_angle: 0.0,
+        _time_elapsed: 0.0,
+      }),
+    },
+    z_index: 120,
+  })
 }
 
 // ---------------------------------
