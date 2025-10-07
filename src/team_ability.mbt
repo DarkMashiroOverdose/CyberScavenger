@@ -41,10 +41,9 @@ pub fn team_ability_system(_backend: &@system.Backend) -> Unit {
           }
         }
       }
-      TargetingRule::LowestHealthAlly => {
+       TargetingRule::LowestHealthAlly => {
         let mut lowest_health_ally: Option[@system.Entity] = None
-        let mut min_health_percentage: Double = 2.0 
-
+        let mut min_health_percentage: Double = 1.0 
         for ally in all_units.val {
           if teams.get(ally) == Some(Team::Player) {
             if healths.get(ally) is Some(health) {
@@ -59,16 +58,27 @@ pub fn team_ability_system(_backend: &@system.Backend) -> Unit {
             }
           }
         }
-
         if lowest_health_ally is Some(target_ally) {
           targets.push(target_ally)
         }
       }
     }
 
-    // 4. 对所有找到的目标，应用效果
-    for target in targets {
-      apply_all_effects(unit, target, ability.effects)
+    if targets.length() > 0 {
+      ability.current_cooldown = ability.cooldown
+
+      if ability.cast_sfx is Some(sfx) {
+        sfx_requests.val.push({ sfx_type: sfx, position: None })
+      }
+      if ability.cast_vfx is Some(vfx) {
+         if @position.positions.get(unit) is Some(pos) {
+           vfx_requests.val.push({ vfx_type: vfx, position: pos.0, rotation: 0.0, parent_entity: Some(unit) })
+         }
+      }
+      
+      for target in targets {
+        apply_all_effects(unit, target, ability.effects)
+      }
     }
   }
 }

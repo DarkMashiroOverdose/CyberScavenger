@@ -167,7 +167,7 @@ fn setup_vfx_library() -> Unit {
       lifecycle: VFX_Lifecycle::Timer(0.5),
       dynamic_transform: Some({
         is_pulsing_scale: false,
-        rotation_speed: 0.5,
+        rotation_speed: 1.0,
         scale_speed: 1.0,
         scale_amplitude: 0.1,
         _current_angle: 0.0,

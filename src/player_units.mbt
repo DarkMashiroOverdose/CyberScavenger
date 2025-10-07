@@ -355,13 +355,12 @@ fn add_new_green_circle(pos: @math.Vec2D) -> @system.Entity {
   healths.set(new_unit, { current: 6, max: 6, bar_bg_entity: bar_bg, bar_fg_entity: bar_fg })
 
   // GDD: HP 5, 在场时，队列每造成5点总伤害，为血量最低的队员恢复1HP
-  // 现在还没做对队回血的系统，就先和三角形一个模板占位 TODO
   combat_stats.set(new_unit, {
     attack_range: 300.0, 
     attack_type: AttackType::Bullet,
     aoe_radius: 4.0,
     on_hit_effects: [
-        OnHitEffect::DealDamage(3.0, Some(VFX_Type::BulletImpact)), 
+        OnHitEffect::DealDamage(1.0, Some(VFX_Type::BulletImpact)), 
 
         OnHitEffect::AreaOfEffect(
           [OnHitEffect::DealDamage(1.0, None)],
@@ -383,10 +382,10 @@ fn add_new_green_circle(pos: @math.Vec2D) -> @system.Entity {
 
   team_abilities.set(new_unit, {
     effects: [OnHitEffect::Heal(1.0, Some(Healing))], // 效果是治疗1点HP
-    cooldown: 1.0, // 每10秒触发一次
+    cooldown: 5.0, // 每5秒触发一次
     current_cooldown: 0, // 初始冷却
     targeting_rule: TargetingRule::LowestHealthAlly, // 目标规则是血量最低的队友
-    cast_vfx: Some(PoisonCloud), // 可以在这里加上施法特效
+    cast_vfx: None, // 可以在这里加上施法特效
     cast_sfx: None,
   })
 

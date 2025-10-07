@@ -50,7 +50,7 @@ pub let unit_definitions: Map[UnitType, UnitDefinition] = {
   db.set(UnitType::GreenTriangle,  { name: "绿色三角", color_tag: SynergyTag::Green,  shape_tag: UnitShape::Triangle, hp:6,   atk:5,
     gdd: "每 5 秒投射 1 枚毒气弹，直接命中敌人造成 2 点伤害，并留下毒气区域，毒气有迟滞效果，每秒造成 3 点伤害"})
   db.set(UnitType::GreenCircle,    { name: "绿色圆形", color_tag: SynergyTag::Green,  shape_tag: UnitShape::Circle,   hp:6,   atk:1,
-    gdd: "单位在场时，队列每 10 秒，为血量最低的队员恢复 1 HP！！未完成内容！！"})
+    gdd: "单位在场时，队列每 5 秒，为血量最低的队员恢复 1 HP"})
   db.set(UnitType::BlueSquare,     { name: "蓝色方块", color_tag: SynergyTag::Blue,   shape_tag: UnitShape::Square,   hp:9,   atk:6,
     gdd: "每 5 秒以自身为圆心，对一定半径范围的敌人施加持续5秒的每秒 2 点伤害的持续伤害"})
   db.set(UnitType::BlueTriangle,   { name: "蓝色三角", color_tag: SynergyTag::Blue,   shape_tag: UnitShape::Triangle, hp:7,   atk:5,
