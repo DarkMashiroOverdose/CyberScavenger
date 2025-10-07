@@ -153,3 +153,7 @@ fn get_computed_movement_stats(unit: @system.Entity) -> Option[MovementStats] {
   }
   return None
 }
+///让减少冷却的buff无法作用于冷却辅助单位
+pub struct CooldownAbilityUnit {
+}
+pub let cooldown_ability_units: Map[@system.Entity, CooldownAbilityUnit] = Map::new()

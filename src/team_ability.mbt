@@ -22,9 +22,19 @@ pub fn team_ability_system(_backend: &@system.Backend) -> Unit {
   let delta_seconds = 1.0 / 60.0
 
   for unit, ability in team_abilities {
+    let mut current_cooldown_multiplier = 1.0
+    if active_buffs.get(unit) is Some(buff_list) {
+      for buff in buff_list {
+        if buff.buff_type is MultiplyCooldown(factor) {
+          current_cooldown_multiplier *= factor
+        }
+      }
+    }
+    
     if ability.current_cooldown > 0.0 {
-      ability.current_cooldown -= delta_seconds
-      continue 
+      // 冷却倒数的速率会根据Buff加快
+      ability.current_cooldown -= delta_seconds / current_cooldown_multiplier
+      continue
     }
 
     ability.current_cooldown = ability.cooldown

@@ -66,7 +66,19 @@ fn combat_system(backend: &@system.Backend) -> Unit {
   for unit in combat_stats.keys() {
     if combat_stats.get(unit) is Some(stats) {
       if stats.current_cooldown > 0.0 {
-        let new_cooldown = stats.current_cooldown - delta_seconds
+        
+        // 计算当前单位的冷却速度乘数
+        let mut current_cooldown_multiplier = 1.0
+        if active_buffs.get(unit) is Some(buff_list) {
+          for buff in buff_list {
+            if buff.buff_type is MultiplyCooldown(factor) {
+              current_cooldown_multiplier *= factor
+            }
+          }
+        }
+        
+        // 根据乘数，加快冷却倒数速度
+        let new_cooldown = stats.current_cooldown - (delta_seconds / current_cooldown_multiplier)
         combat_stats.set(unit, { ..stats, current_cooldown: new_cooldown })
       }
     }
@@ -94,7 +106,9 @@ fn combat_system(backend: &@system.Backend) -> Unit {
               })
             }
             // 重置冷却
-            combat_stats.set(attacker, { ..attacker_stats, current_cooldown: attacker_stats.attack_cooldown })
+            if combat_stats.get(attacker) is Some(base_stats) {
+              combat_stats.set(attacker, { ..base_stats, current_cooldown: attacker_stats.attack_cooldown })
+            }
 
             
             //添加攻击动画
@@ -260,6 +274,13 @@ fn apply_all_effects(source: @system.Entity, target: @system.Entity, effects: Ar
       }
 
       ApplyBuff(buff_type, duration, vfx_opt) => {
+        if buff_type is MultiplyCooldown(_) {
+          // 如果目标是冷却辅助的单位，则直接跳过，不施加此Buff
+          if cooldown_ability_units.get(target) is Some(_) {
+              println("【技能豁免】: 单位 \{target} 是一个冷却技能单位，豁免了冷却缩减Buff。")
+              continue
+          }
+        }
         // 调用我们现有的 Buff 添加函数
         add_buff(target, buff_type, duration)
         if vfx_opt is Some(vfx_type) {

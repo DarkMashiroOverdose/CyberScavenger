@@ -12,6 +12,7 @@ pub enum VFX_Type {
   AoEMeeleRed
   AoEMeeleOrange
   Healing
+  CooldownUp
 } derive(Eq, Show, Hash)
 
 /// 用一个枚举来描述特效的【静态外观】
@@ -169,6 +170,24 @@ fn setup_vfx_library() -> Unit {
         is_pulsing_scale: false,
         rotation_speed: 1.0,
         scale_speed: 1.0,
+        scale_amplitude: 0.1,
+        _current_angle: 0.0,
+        _time_elapsed: 0.0,
+      }),
+    },
+    z_index: 120,
+  })
+  vfx_library.set(VFX_Type::CooldownUp, {
+    sprite_template: SpriteTemplate::Shape(
+        @sprite.Shape::ellipse(20.0,6.0,0.0), 
+        @sprite.DrawStyle::stroke("rgba(152, 0, 218, 1)",1.0)),
+    behavior: {
+      // 【核心】指定生命周期模式
+      lifecycle: VFX_Lifecycle::Timer(8.0),
+      dynamic_transform: Some({
+        is_pulsing_scale: false,
+        rotation_speed: 0.3,
+        scale_speed: 0,
         scale_amplitude: 0.1,
         _current_angle: 0.0,
         _time_elapsed: 0.0,

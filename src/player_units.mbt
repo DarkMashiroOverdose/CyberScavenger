@@ -239,17 +239,14 @@ fn add_new_purple_circle(pos: @math.Vec2D) -> @system.Entity {
   let new_unit = spawn_base_player_unit(pos, UnitShape::Circle, SynergyTag::Purple)
 
   let (bar_bg, bar_fg) = attach_health_bar()
-  healths.set(new_unit, { current: 9, max: 9, bar_bg_entity: bar_bg, bar_fg_entity: bar_fg })
+  healths.set(new_unit, { current: 7, max: 7, bar_bg_entity: bar_bg, bar_fg_entity: bar_fg })
 
   // GDD: HP 9, 每15秒为队列添加1次持续8秒的buff，使成员技能冷却（CD）计数加快1.5倍。
-  // 现在还没做对队施加增益的系统，就先和三角形一个模板占位 TODO
   combat_stats.set(new_unit, {
     attack_range: 300.0, 
     attack_type: AttackType::Bullet,
     aoe_radius: 4.0,
     on_hit_effects: [
-        OnHitEffect::DealDamage(3.0, Some(VFX_Type::BulletImpact)), 
-
         OnHitEffect::AreaOfEffect(
           [OnHitEffect::DealDamage(1.0, None)],
           100.0, 
@@ -267,6 +264,24 @@ fn add_new_purple_circle(pos: @math.Vec2D) -> @system.Entity {
     attack_sfx: Some(PlayerShoot), 
     bullet_color: Some(gdd_color_palette.get(Purple).unwrap_or("#FFFFFF"))
   })
+
+  team_abilities.set(new_unit, {
+    effects: [
+      OnHitEffect::ApplyBuff(
+        BuffType::MultiplyCooldown(1.0 / 1.25),
+        8.0,
+        Some(CooldownUp),
+      )
+    ],
+    cooldown: 15.0,
+    current_cooldown: 15.0,
+    targeting_rule: TargetingRule::AllAllies,
+    cast_vfx: None,
+    cast_sfx: None,
+  })
+
+  ///让减少冷却的buff无法作用于冷却辅助单位
+  cooldown_ability_units.set(new_unit, CooldownAbilityUnit::{})
 
   all_units.val.push(new_unit)
   return new_unit
@@ -317,7 +332,6 @@ fn add_new_green_triangle(pos: @math.Vec2D) -> @system.Entity {
   healths.set(new_unit, { current: 6, max: 6, bar_bg_entity: bar_bg, bar_fg_entity: bar_fg })
 
   // GDD:  每6秒投射1枚毒气弹，直接命中敌人造成2点伤害，并留下半径4的毒气区域（每1秒1伤害）
-  // 现在还没做对多个敌人同时造成单体伤害系统，就先和三角形一个模板占位 TODO
   combat_stats.set(new_unit, {
     attack_range: 300.0, 
     attack_type: AttackType::Bullet,
