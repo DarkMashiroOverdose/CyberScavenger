@@ -67,6 +67,14 @@ pub enum OnHitEffect {
     Double,              // 每次连锁后，伤害的衰减系数 (例如 0.5)
     Option[VFX_Type] 
   )
+
+  /// 一次性对多攻击
+  Fork(
+    Array[OnHitEffect],      // 对额外目标施加的效果
+    Int,           // 最多寻找多少个额外目标
+    Double,                    // 在多大范围内寻找
+    Option[VFX_Type]        // 从【攻击者】到【额外目标】的光束特效
+  )
 }
 fn combat_system(backend: &@system.Backend) -> Unit {
   let delta_seconds = 1.0 / 60.0
@@ -375,6 +383,16 @@ fn apply_all_effects(source: @system.Entity, target: @system.Entity, effects: Ar
           initial_hit_list,
         )
       }
+      Fork(fork_effects, max_extra_targets, range, beam_vfx) => {
+        execute_fork(
+          source,
+          target,
+          fork_effects,
+          max_extra_targets,
+          range,
+          beam_vfx,
+        )
+      }
       // ... 未来在这里扩展 ...
     }
   }
@@ -601,5 +619,46 @@ fn execute_chain_recursive(
       beam_vfx,
       already_hit,
     )
+  }
+}
+fn execute_fork(
+  source: @system.Entity,
+  primary_target: @system.Entity,
+  effects: Array[OnHitEffect],
+  max_extra_targets: Int,
+  range: Double,
+  beam_vfx: Option[VFX_Type],
+) -> Unit {
+  let mut extra_targets_found = 0
+  let already_hit = [source, primary_target] 
+
+  if @position.positions.get(source) is Some(source_pos) {
+    for unit in all_units.val {
+      if extra_targets_found >= max_extra_targets {
+        break 
+      }
+      
+      if teams.get(unit) == Some(Team::Enemy) && !already_hit.contains(unit) {
+        if @position.positions.get(unit) is Some(unit_pos) {
+          
+          if source_pos.0.distance_to(unit_pos.0) < range {
+            extra_targets_found += 1
+            already_hit.push(unit)
+
+            if beam_vfx is Some(vfx_type) {
+              vfx_requests.val.push({
+                vfx_type,
+                position: source_pos.0,
+                to_position: Some(unit_pos.0),
+                rotation: 0.0,
+                parent_entity: None,
+              })
+            }
+
+            apply_all_effects(source, unit, effects)
+          }
+        }
+      }
+    }
   }
 }

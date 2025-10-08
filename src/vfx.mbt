@@ -17,6 +17,8 @@ pub enum VFX_Type {
   ChainBeam 
   PrimaryBeamBoom
   ChainBeamBoom
+  ForkBeam
+  ForkBeamBoom
 } derive(Eq, Show, Hash)
 ///光束类型特效
 pub struct BeamTemplate {
@@ -240,6 +242,24 @@ fn setup_vfx_library() -> Unit {
     },
     z_index: 50,
   })
+  vfx_library.set(VFX_Type::ForkBeamBoom, {
+    sprite_template: SpriteTemplate::Shape(
+        @sprite.Shape::circle(15.0), 
+        @sprite.DrawStyle::stroke("#DDA0DD",3.0)),
+    behavior: {
+      // 【核心】指定生命周期模式
+      lifecycle: VFX_Lifecycle::Timer(0.15),
+      dynamic_transform: Some({
+        is_pulsing_scale: true,
+        rotation_speed: 0.5,
+        scale_speed: 10.0,
+        scale_amplitude: 1.0,
+        _current_angle: 0.0,
+        _time_elapsed: 0.0,
+      }),
+    },
+    z_index: 50,
+  })
   vfx_library.set(VFX_Type::PrimaryBeam, {
     sprite_template: SpriteTemplate::Beam({
       color: "#6495ED",
@@ -252,6 +272,14 @@ fn setup_vfx_library() -> Unit {
     sprite_template: SpriteTemplate::Beam({
       color: "#87CEEB",
       thickness: 3.5,
+    }),
+    behavior: { lifecycle: VFX_Lifecycle::Timer(0.12), dynamic_transform: None },
+    z_index: 300,
+  })
+  vfx_library.set(VFX_Type::ForkBeam, {
+    sprite_template: SpriteTemplate::Beam({
+      color: "#DDA0DD",
+      thickness: 5.0,
     }),
     behavior: { lifecycle: VFX_Lifecycle::Timer(0.12), dynamic_transform: None },
     z_index: 300,

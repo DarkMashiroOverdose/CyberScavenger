@@ -203,28 +203,27 @@ fn add_new_purple_triangle(pos: @math.Vec2D) -> @system.Entity {
   let (bar_bg, bar_fg) = attach_health_bar()
   healths.set(new_unit, { current: 7.0, max: 7.0, bar_bg_entity: bar_bg, bar_fg_entity: bar_fg })
 
-  // GDD: 每3秒对3个敌人发射激光射线，造成4点伤害并附加0.5秒静止效果
-  // 现在还没做对多个敌人同时造成单体伤害系统，就先和三角形一个模板占位 TODO
+  // GDD: 每3秒对3个敌人发射激光射线，造成4点伤害并附加1.0秒静止效果
   combat_stats.set(new_unit, {
     attack_range: 300.0, 
-    attack_type: AttackType::Bullet,
-    aoe_radius: 4.0,
+    attack_type: AttackType::Ranged,
+    aoe_radius: 0.0,
     on_hit_effects: [
-        OnHitEffect::DealDamage(3.0, Some(VFX_Type::BulletImpact)), 
-
-        OnHitEffect::AreaOfEffect(
-          [OnHitEffect::DealDamage(1.0, None)],
-          100.0, 
-          None,
-        ),
-        OnHitEffect::Knockback(15)
+      OnHitEffect::DealDamage(4.0, Some(VFX_Type::ForkBeamBoom),), 
+      OnHitEffect::ApplyBuff(BuffType::MultiplySpeed(0.01), 1.0, Some(SpeedLow)),
+      OnHitEffect::Fork(
+        [OnHitEffect::DealDamage(4.0, Some(VFX_Type::ForkBeamBoom)),ApplyBuff(BuffType::MultiplySpeed(0.01), 1.0, Some(SpeedLow))],
+        2,
+        350.0,
+        Some(VFX_Type::ForkBeam) 
+      )
     ],
-    attack_cooldown: 1.0,
+    attack_cooldown: 3.0,
     
     current_cooldown: 0.0,
     aggro_range: 350.0, 
     crit_rate: 0.05, 
-    attack_cast_vfx: None,    
+    attack_cast_vfx: Some(ForkBeam),    
     area_effect_vfx: None,
     attack_sfx: Some(PlayerShoot), 
     bullet_color: Some(gdd_color_palette.get(Purple).unwrap_or("#FFFFFF"))
@@ -295,7 +294,6 @@ fn add_new_green_square(pos: @math.Vec2D) -> @system.Entity {
   healths.set(new_unit, { current: 9.0, max: 9.0, bar_bg_entity: bar_bg, bar_fg_entity: bar_fg })
 
   // GDD: HP 8, 持续以自身为中心，在半径8范围内释放毒气，每1秒造成1点伤害。
-  // 现在还没做无目标释放攻击的功能，就先随便做一个近战释放毒气的系统
   combat_stats.set(new_unit, {
     attack_range: 100.0, 
     attack_type: AttackType::Melee,
