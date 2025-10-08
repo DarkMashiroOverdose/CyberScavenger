@@ -27,6 +27,7 @@ let synergy_panel_entities: Ref[Array[@system.Entity]] = Ref::new([])
 let squad_guide_shown: Ref[Bool] = Ref::new(false)
 
 let current_guide_image_index: Ref[Int] = Ref::new(0)
+let is_guide_active: Ref[Bool] = Ref::new(false)
 
 pub enum ButtonAction {
   SwitchState(UIState)
@@ -36,7 +37,7 @@ pub enum ButtonAction {
   SetShapeFilter(Option[UnitShape])   // 设置形状筛选
   UnlockAudio
   NextGuidePage
-}
+} derive(Eq)
 
 pub struct Button {
   area: @math.Rect
@@ -490,7 +491,12 @@ fn setup_settings_ui() -> Unit {
 fn setup_squad_builder_ui() -> Unit {
   if !squad_guide_shown.val {
     println("【UI】: 首次进入组队界面，显示新手引导...")
+    is_guide_active.val = true
+    current_guide_image_index.val = 0
     setup_squad_guide_ui()
+  }else {
+    println("【UI】: 组队引导已看过，显示正常组队界面...")
+    is_guide_active.val = false
   }
 
 
@@ -1198,6 +1204,11 @@ pub fn button_system(backend: &@system.Backend) -> Unit {
         }
       }
     }
+    if is_guide_active.val {
+      if button.action != ButtonAction::NextGuidePage {
+        continue 
+      }
+    }
     if is_inside && @system.is_mouse_just_pressed(@system.MouseButton::Left) {
       sfx_requests.val.push({
         sfx_type: SFX_Type::Select, // 使用你已有的 Select 类型
@@ -1257,6 +1268,7 @@ pub fn button_system(backend: &@system.Backend) -> Unit {
               println("【UI】: 切换到引导页 \{current_guide_image_index.val + 1}")
               setup_squad_guide_ui()
             } else {
+              is_guide_active.val = false
               println("【UI】: 组队引导已完成，进入正常组队界面。")
               squad_guide_shown.val = true 
             }
