@@ -444,30 +444,29 @@ fn add_new_blue_triangle(pos: @math.Vec2D) -> @system.Entity {
   healths.set(new_unit, { current: 7, max: 7, bar_bg_entity: bar_bg, bar_fg_entity: bar_fg })
 
   // GDD: 每3秒发射1条闪电链，首次命中敌人造成4点伤害，分裂至其他敌人（每条分裂伤害减半），每条分裂2条。
-  // 现在还没做闪电链条系统，就先和三角形一个模板占位 TODO
   combat_stats.set(new_unit, {
     attack_range: 300.0, 
-    attack_type: AttackType::Bullet,
-    aoe_radius: 4.0,
+    attack_type: AttackType::Ranged,
+    aoe_radius: 0,
     on_hit_effects: [
-        OnHitEffect::DealDamage(3.0, Some(VFX_Type::BulletImpact)), 
-
-        OnHitEffect::AreaOfEffect(
-          [OnHitEffect::DealDamage(1.0, None)],
-          100.0, 
-          None,
+        OnHitEffect::DealDamage(4.0, Some(VFX_Type::PrimaryBeamBoom)), 
+        OnHitEffect::Chain(
+          [OnHitEffect::DealDamage(1.0, Some(VFX_Type::ChainBeamBoom))],
+          2,
+          200.0,
+          0.5,
+          Some(VFX_Type::ChainBeam)
         ),
-        OnHitEffect::Knockback(15)
     ],
     attack_cooldown: 1.0,
     
     current_cooldown: 0.0,
     aggro_range: 350.0, 
     crit_rate: 0.05, 
-    attack_cast_vfx: None,    
+    attack_cast_vfx: Some(PrimaryBeam),    
     area_effect_vfx: None,
     attack_sfx: Some(PlayerShoot), 
-    bullet_color: Some(gdd_color_palette.get(Blue).unwrap_or("#FFFFFF"))
+    bullet_color: None,
   })
 
   all_units.val.push(new_unit)

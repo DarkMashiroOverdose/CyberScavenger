@@ -82,7 +82,7 @@ pub fn team_ability_system(_backend: &@system.Backend) -> Unit {
       }
       if ability.cast_vfx is Some(vfx) {
          if @position.positions.get(unit) is Some(pos) {
-           vfx_requests.val.push({ vfx_type: vfx, position: pos.0, rotation: 0.0, parent_entity: Some(unit) })
+           vfx_requests.val.push({ vfx_type: vfx, position: pos.0, rotation: 0.0, parent_entity: Some(unit), to_position: None, })
          }
       }
       

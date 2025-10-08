@@ -13,14 +13,23 @@ pub enum VFX_Type {
   AoEMeeleOrange
   Healing
   CooldownUp
+  PrimaryBeam
+  ChainBeam 
+  PrimaryBeamBoom
+  ChainBeamBoom
 } derive(Eq, Show, Hash)
-
+///光束类型特效
+pub struct BeamTemplate {
+  color: String
+  thickness: Double
+}
 /// 用一个枚举来描述特效的【静态外观】
 pub enum SpriteTemplate {
   Picture(String, @math.Vec2D)
   Shape(@sprite.Shape, @sprite.DrawStyle)
   Animation(@sprite.Animation, @math.Vec2D)
   TextLayout(@system.TextLayout) 
+  Beam(BeamTemplate)
 }
 /// 用一个结构体来描述特效的【动态行为】
 pub struct VFX_Behavior {
@@ -195,6 +204,58 @@ fn setup_vfx_library() -> Unit {
     },
     z_index: 120,
   })
+  vfx_library.set(VFX_Type::PrimaryBeamBoom, {
+    sprite_template: SpriteTemplate::Shape(
+        @sprite.Shape::circle(20.0), 
+        @sprite.DrawStyle::stroke("#6495ED",4.0)),
+    behavior: {
+      // 【核心】指定生命周期模式
+      lifecycle: VFX_Lifecycle::Timer(0.15),
+      dynamic_transform: Some({
+        is_pulsing_scale: true,
+        rotation_speed: 0.5,
+        scale_speed: 10.0,
+        scale_amplitude: 1.0,
+        _current_angle: 0.0,
+        _time_elapsed: 0.0,
+      }),
+    },
+    z_index: 50,
+  })
+  vfx_library.set(VFX_Type::ChainBeamBoom, {
+    sprite_template: SpriteTemplate::Shape(
+        @sprite.Shape::circle(15.0), 
+        @sprite.DrawStyle::stroke("#87CEEB",3.0)),
+    behavior: {
+      // 【核心】指定生命周期模式
+      lifecycle: VFX_Lifecycle::Timer(0.15),
+      dynamic_transform: Some({
+        is_pulsing_scale: true,
+        rotation_speed: 0.5,
+        scale_speed: 10.0,
+        scale_amplitude: 1.0,
+        _current_angle: 0.0,
+        _time_elapsed: 0.0,
+      }),
+    },
+    z_index: 50,
+  })
+  vfx_library.set(VFX_Type::PrimaryBeam, {
+    sprite_template: SpriteTemplate::Beam({
+      color: "#6495ED",
+      thickness: 5.0,
+    }),
+    behavior: { lifecycle: VFX_Lifecycle::Timer(0.15), dynamic_transform: None },
+    z_index: 300,
+  })
+  vfx_library.set(VFX_Type::ChainBeam, {
+    sprite_template: SpriteTemplate::Beam({
+      color: "#87CEEB",
+      thickness: 3.5,
+    }),
+    behavior: { lifecycle: VFX_Lifecycle::Timer(0.12), dynamic_transform: None },
+    z_index: 300,
+  })
 }
 
 // ---------------------------------
@@ -206,6 +267,7 @@ pub struct VFX_Request {
   position: @math.Vec2D
   rotation: Double
   parent_entity: Option[@system.Entity] 
+  to_position: Option[@math.Vec2D]
 }
 pub let vfx_follows: Map[@system.Entity, VFX_Follow] = Map::new()
 pub struct VFX_Follow {
@@ -257,13 +319,52 @@ pub fn vfx_spawner_system(_backend: &@system.Backend) -> Unit {
             layer=@sprite.RenderLayer::ui()
           )
         }
+        SpriteTemplate::Beam(beam_template) => {
+          if request.to_position is Some(to_pos) {
+            let from_pos = request.position
+            let delta = to_pos - from_pos
+            let distance = delta.distance()
+            let angle = @kmath.atan2(delta[Y], delta[X])
+            let center_pos = vec2d_lerp(from_pos, to_pos, 0.5)
+
+            let beam_shape = @sprite.ColoredShape::new(
+              @sprite.Shape::rect(distance, beam_template.thickness, 0.0),
+              @sprite.DrawStyle::fill(beam_template.color)
+            )
+            
+            @position.positions.set(vfx_entity, center_pos)
+
+            let sprite = @sprite.Sprite::from_shape(
+              beam_shape, 
+              template.z_index, 
+              offset= @math.Vec2D(-distance / 2.0, -beam_template.thickness / 2.0),
+              layer=@sprite.RenderLayer::game_world(),
+            )
+            sprite.transform = @math.Transform::from_rotation_rad(angle)
+            sprite
+          } else {
+            @sprite.Sprite::from_shape(@sprite.ColoredShape::new(@sprite.Shape::rect(0.0,0.0,0.0),@sprite.DrawStyle::fill("transparent")),0)
+          }
+        }
       }
 
       @sprite.sprites.set(vfx_entity, sprite_component)
       if template.sprite_template is Animation(anim, _) {
         @sprite.play_animation(vfx_entity, anim)
       }
-      
+
+      if template.sprite_template is Beam(_) && request.to_position is Some(to_pos) {
+        let center_pos = vec2d_lerp(request.position, to_pos, 0.5)
+        @position.positions.set(vfx_entity, center_pos)
+      } else if request.parent_entity is Some(parent) {
+        vfx_follows.set(vfx_entity, { parent, offset: @math.Vec2D::zero() })
+        if @position.positions.get(parent) is Some(parent_pos) {
+            @position.positions.set(vfx_entity, parent_pos.0)
+        }
+      } else {
+        @position.positions.set(vfx_entity, request.position)
+      }
+
       vfx_instances.set(vfx_entity, template.behavior.lifecycle)
       if template.behavior.dynamic_transform is Some(dt) {
         dynamic_transforms.set(vfx_entity, dt)

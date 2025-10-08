@@ -58,6 +58,15 @@ pub enum OnHitEffect {
 
   /// 治疗
   Heal(Double, Option[VFX_Type])
+
+  /// 连锁效果
+  Chain(
+    Array[OnHitEffect], // 对下一个目标施加的效果列表
+    Int,                // 最多能连锁的次数
+    Double,             // 寻找下一个目标的范围
+    Double,              // 每次连锁后，伤害的衰减系数 (例如 0.5)
+    Option[VFX_Type] 
+  )
 }
 fn combat_system(backend: &@system.Backend) -> Unit {
   let delta_seconds = 1.0 / 60.0
@@ -118,6 +127,7 @@ fn combat_system(backend: &@system.Backend) -> Unit {
                 position: attacker_pos.0, // 特效在攻击者身上产生
                 rotation: 0.0,
                 parent_entity: None,
+                to_position: None,
               })
             }
 
@@ -131,9 +141,16 @@ fn combat_system(backend: &@system.Backend) -> Unit {
                 execute_bullet_attack(attacker, target, attacker_stats)
               }
               AttackType::Ranged => {
-                //TODO: 实现远程瞬间伤害逻辑
-                execute_bullet_attack(attacker, target, attacker_stats)
-                println("[Log] Ranged Attack not implemented yet.")
+                if attacker_stats.attack_cast_vfx is Some(vfx) {
+                  vfx_requests.val.push({
+                    vfx_type: vfx,
+                    position: attacker_pos.0,
+                    to_position: Some(target_pos.0),
+                    rotation: 0.0,
+                    parent_entity: None,
+                  })
+                }
+                apply_all_effects(attacker, target, attacker_stats.on_hit_effects)
               }
               AttackType::AoE => {
                 execute_aoe_melee_attack(attacker, attacker_stats)
@@ -268,6 +285,7 @@ fn apply_all_effects(source: @system.Entity, target: @system.Entity, effects: Ar
               position: target_pos.0,
               rotation: 0.0,
               parent_entity: None,
+              to_position: None,
             })
           }
         }
@@ -290,6 +308,7 @@ fn apply_all_effects(source: @system.Entity, target: @system.Entity, effects: Ar
               position: target_pos.0,
               rotation: 0.0,
               parent_entity: Some(target),
+              to_position: None,
             })
           }
         }
@@ -317,6 +336,7 @@ fn apply_all_effects(source: @system.Entity, target: @system.Entity, effects: Ar
               position: target_pos.0,
               rotation: 0.0,
               parent_entity: None,
+              to_position: None,
             })
           }
           apply_effects_in_area(source, target_pos.0, radius, effects_in_area, source_team)
@@ -336,10 +356,24 @@ fn apply_all_effects(source: @system.Entity, target: @system.Entity, effects: Ar
                 vfx_type: vfx_type,
                 position: target_pos.0,
                 rotation: 0.0,
-                parent_entity: Some(target)
+                parent_entity: Some(target),
+                to_position: None,
               })
             }
           }
+      }
+      Chain(next_effects, max_jumps, jump_range, falloff, beam_vfx) => {
+        let initial_hit_list = [source, target]
+        execute_chain_recursive(
+          source,
+          target, // 第一次跳跃的起点
+          next_effects,
+          max_jumps,
+          jump_range,
+          falloff,
+          beam_vfx,
+          initial_hit_list,
+        )
       }
       // ... 未来在这里扩展 ...
     }
@@ -439,6 +473,7 @@ fn spawn_hazardous_area(
       position: pos,
       rotation: 0.0,
       parent_entity: None,
+      to_position: None,
     })
   }
 
@@ -499,5 +534,72 @@ fn apply_heal(target: @system.Entity, amount: Double) -> Unit {
   if healths.get(target) is Some(health) {
     let new_current_hp = min_double(health.max, health.current + amount)
     healths.set(target, { ..health, current: new_current_hp })
+  }
+}
+fn execute_chain_recursive(
+  source: @system.Entity,
+  current_target: @system.Entity,
+  effects: Array[OnHitEffect],
+  jumps_left: Int,
+  jump_range: Double,
+  damage_falloff: Double,
+  beam_vfx: Option[VFX_Type],
+  already_hit: Array[@system.Entity],
+) -> Unit {
+  if jumps_left <= 0 {
+    return
+  }
+
+  let mut next_target_opt: Option[@system.Entity] = None
+  let mut min_distance = jump_range
+
+  if @position.positions.get(current_target) is Some(current_pos) {
+    for unit in all_units.val {
+      if teams.get(unit) == Some(Team::Enemy) && !already_hit.contains(unit) {
+        if @position.positions.get(unit) is Some(next_pos) {
+          let distance = current_pos.0.distance_to(next_pos.0)
+          if distance < min_distance {
+            min_distance = distance
+            next_target_opt = Some(unit)
+          }
+        }
+      }
+    }
+  }
+
+  if next_target_opt is Some(actual_next_target) {
+    already_hit.push(actual_next_target)
+
+    if beam_vfx is Some(vfx_type) {
+      if @position.positions.get(current_target) is Some(from_pos) &&
+         @position.positions.get(actual_next_target) is Some(to_pos) {
+        
+        vfx_requests.val.push({
+          vfx_type: vfx_type,
+          position: from_pos.0,
+          to_position: Some(to_pos.0),
+          rotation: 0.0,
+          parent_entity: None,
+        })
+      }
+    }
+    
+    let fallen_off_effects = effects.map(fn(eff) {
+      match eff {
+        DealDamage(dmg, vfx) => OnHitEffect::DealDamage(dmg * damage_falloff, vfx)
+        _ => eff
+      }
+    })
+    apply_all_effects(source, actual_next_target, fallen_off_effects)
+    execute_chain_recursive(
+      source,
+      actual_next_target,
+      fallen_off_effects,
+      jumps_left - 1,
+      jump_range,
+      damage_falloff,
+      beam_vfx,
+      already_hit,
+    )
   }
 }
