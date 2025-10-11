@@ -433,6 +433,15 @@ fn apply_damage(attacker: @system.Entity, target: @system.Entity, base_damage: D
         println("[Log] Critical Hit!")
       }
     }
+    //受击闪白
+    vfx_requests.val.push({
+      vfx_type: VFX_Type::HitFlash,
+      position: @math.Vec2D::zero(),
+      rotation: 0.0,
+      parent_entity: Some(target),
+      to_position: None,
+    })
+
     if @position.positions.get(target) is Some(target_pos) {
       sfx_requests.val.push({
         sfx_type: SFX_Type::EnemyHit,

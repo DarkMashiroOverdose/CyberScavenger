@@ -19,6 +19,7 @@ pub enum VFX_Type {
   ChainBeamBoom
   ForkBeam
   ForkBeamBoom
+  HitFlash
 } derive(Eq, Show, Hash)
 ///光束类型特效
 pub struct BeamTemplate {
@@ -32,6 +33,7 @@ pub enum SpriteTemplate {
   Animation(@sprite.Animation, @math.Vec2D)
   TextLayout(@system.TextLayout) 
   Beam(BeamTemplate)
+  FromParent
 }
 /// 用一个结构体来描述特效的【动态行为】
 pub struct VFX_Behavior {
@@ -284,6 +286,14 @@ fn setup_vfx_library() -> Unit {
     behavior: { lifecycle: VFX_Lifecycle::Timer(0.12), dynamic_transform: None },
     z_index: 300,
   })
+  vfx_library.set(VFX_Type::HitFlash, {
+    sprite_template: SpriteTemplate::FromParent,
+    behavior: { 
+      lifecycle: VFX_Lifecycle::Timer(0.12),
+      dynamic_transform: None 
+    },
+    z_index: 500,
+  })
 }
 
 // ---------------------------------
@@ -374,6 +384,55 @@ pub fn vfx_spawner_system(_backend: &@system.Backend) -> Unit {
             @sprite.Sprite::from_shape(@sprite.ColoredShape::new(@sprite.Shape::rect(0.0,0.0,0.0),@sprite.DrawStyle::fill("transparent")),0)
           }
         }
+        SpriteTemplate::FromParent => {
+          if request.parent_entity is Some(parent_entity) {
+            if @sprite.sprites.get(parent_entity) is Some(parent_sprite) {
+              // 尝试从父Sprite中复制形状信息
+              let original_shape_opt = match parent_sprite.sprite_type {
+                @sprite.SpriteType::ColoredShape(cs) => {
+                  Some(cs.shape)
+                }
+                @sprite.SpriteType::Picture(pic) => {
+                  Some(@sprite.Shape::rect(pic.size[X], pic.size[Y], 0.0))
+                }
+                @sprite.SpriteType::Animation(anim, ..) => {
+                  if anim.frames.length() > 0 {
+                    let frame_size = anim.frames[0].size
+                    Some(@sprite.Shape::rect(frame_size[X], frame_size[Y], 0.0))
+                  } else {
+                    None
+                  }
+                }
+                @sprite.SpriteType::ColorRect(rect) => {
+                  Some(@sprite.Shape::rect(rect.size[X], rect.size[Y], 0.0))
+                }
+                _ => None
+              }
+
+              if original_shape_opt is Some(shape) {
+                let white_graphic = @sprite.ColoredShape::new(
+                  shape,
+                  @sprite.DrawStyle::fill("#FFFFFF") // 强制白色填充
+                )
+                let flash_sprite = @sprite.Sprite::from_shape(
+                  white_graphic,
+                  template.z_index,
+                  offset=parent_sprite.offset, // 复制父级的offset
+                  layer=@sprite.RenderLayer::game_world(),
+                )
+                // 复制父级的旋转
+                flash_sprite.transform = parent_sprite.transform 
+                flash_sprite
+              } else { // 这些else都是处理空情况的
+                @sprite.Sprite::from_shape(@sprite.ColoredShape::new(@sprite.Shape::rect(0.0,0.0,0.0),@sprite.DrawStyle::fill("transparent")),0)
+              }
+            } else {
+              @sprite.Sprite::from_shape(@sprite.ColoredShape::new(@sprite.Shape::rect(0.0,0.0,0.0),@sprite.DrawStyle::fill("transparent")),0)
+            }
+          } else {
+            @sprite.Sprite::from_shape(@sprite.ColoredShape::new(@sprite.Shape::rect(0.0,0.0,0.0),@sprite.DrawStyle::fill("transparent")),0)
+          }
+        }
       }
 
       @sprite.sprites.set(vfx_entity, sprite_component)
@@ -384,13 +443,15 @@ pub fn vfx_spawner_system(_backend: &@system.Backend) -> Unit {
       if template.sprite_template is Beam(_) && request.to_position is Some(to_pos) {
         let center_pos = vec2d_lerp(request.position, to_pos, 0.5)
         @position.positions.set(vfx_entity, center_pos)
-      } else if request.parent_entity is Some(parent) {
-        vfx_follows.set(vfx_entity, { parent, offset: @math.Vec2D::zero() })
-        if @position.positions.get(parent) is Some(parent_pos) {
-            @position.positions.set(vfx_entity, parent_pos.0)
-        }
       } else {
-        @position.positions.set(vfx_entity, request.position)
+        if request.parent_entity is Some(parent) {
+          vfx_follows.set(vfx_entity, { parent, offset: @math.Vec2D::zero() })
+          if @position.positions.get(parent) is Some(parent_pos) {
+              @position.positions.set(vfx_entity, parent_pos.0)
+          }
+        } else {
+          @position.positions.set(vfx_entity, request.position)
+        }
       }
 
       vfx_instances.set(vfx_entity, template.behavior.lifecycle)
@@ -411,7 +472,6 @@ pub fn vfx_update_system(_backend: &@system.Backend) -> Unit {
 
       let mut should_destroy = false
 
-      // 【核心】使用 match 语句，为不同类型的生命周期执行不同逻辑
       match instance_lifecycle {
         VFX_Lifecycle::Timer(remaining) => {
           let new_duration = remaining - delta_seconds
@@ -422,7 +482,6 @@ pub fn vfx_update_system(_backend: &@system.Backend) -> Unit {
           }
         }
         VFX_Lifecycle::OnAnimationFinish => {
-          // 【核心】在这里，我们整合了您之前成功的 cleanup_effects_system 的逻辑！
           if @sprite.is_animation_finished(entity) {
             should_destroy = true
           }
