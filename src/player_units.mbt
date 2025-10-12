@@ -63,14 +63,14 @@ fn add_new_orange_square(pos: @math.Vec2D) -> @system.Entity {
   healths.set(new_unit, { current: 10.0, max: 10.0, bar_bg_entity: bar_bg, bar_fg_entity: bar_fg })
 
   combat_stats.set(new_unit, {
-    attack_range: 100.0, 
+    attack_range: 150.0, 
     attack_type: AttackType::AoE, 
-    aoe_radius: 100.0,
+    aoe_radius: 150.0,
     on_hit_effects: [OnHitEffect::DealDamage(10.0,None),OnHitEffect::Knockback(15)], 
     attack_cooldown: 2.0, 
     
     current_cooldown: 0.0, 
-    aggro_range: 100.0, 
+    aggro_range: 150.0, 
     crit_rate: 0.0,
     attack_cast_vfx: Some(AoEMeeleOrange),    
     area_effect_vfx: None,
@@ -450,7 +450,7 @@ fn add_new_blue_triangle(pos: @math.Vec2D) -> @system.Entity {
         OnHitEffect::DealDamage(4.0, Some(VFX_Type::PrimaryBeamBoom)), 
         OnHitEffect::Chain(
           [OnHitEffect::DealDamage(1.0, Some(VFX_Type::ChainBeamBoom))],
-          2,
+          4,
           200.0,
           0.5,
           Some(VFX_Type::ChainBeam)
