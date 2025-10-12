@@ -35,9 +35,15 @@ const MAX_HISTORY_LENGTH: Int = 500    // 单个单位轨迹的最大记录长�
 // -----------------------------------------------------------------------------
 // 核心系统 (Core Systems)
 // -----------------------------------------------------------------------------
+pub enum ControlScheme {
+  ADTurn     // AD左右转向
+  WASDDirect // WASD全向转向
+}
 
+///当前选择的操作模式
+pub let current_control_scheme: Ref[ControlScheme] = Ref::new(ControlScheme::ADTurn)
 /// 系统：处理玩家输入（A/D键），控制火车头的移动和朝向。
-pub fn player_control_system(_backend: &@system.Backend) -> Unit {
+pub fn old_player_control_system(_backend: &@system.Backend) -> Unit {
   let delta_seconds = 1.0 / 60.0
   if player_head.val is Some(head_entity) {
     // 1. 读取转向输入
@@ -60,7 +66,58 @@ pub fn player_control_system(_backend: &@system.Backend) -> Unit {
     @velocity.velocities.set(head_entity, final_velocity)
   }
 }
+const PLAYER_PROPORTIONAL_TURN_FACTOR: Double = 0.1
+pub fn player_control_system(_backend: &@system.Backend) -> Unit {
+  let delta_seconds = 1.0 / 60.0
+  if player_head.val is Some(head_entity) {
 
+    match current_control_scheme.val {
+      
+      ControlScheme::ADTurn => {
+        let mut turn_input = 0.0
+        if @system.is_pressed(@system.KeyA) || @system.is_pressed(@system.ArrowLeft) {
+          turn_input = -1.0
+        }
+        if @system.is_pressed(@system.KeyD) || @system.is_pressed(@system.ArrowRight) {
+          turn_input = 1.0
+        }
+        if turn_input != 0.0 {
+          let turn_angle = PLAYER_TURN_SPEED * turn_input * delta_seconds
+          player_facing_vector.val = rotate_vec2d(player_facing_vector.val, turn_angle)
+        }
+      }
+
+      ControlScheme::WASDDirect => {
+        let mut input_vector = @math.Vec2D::zero()
+        if @system.is_pressed(@system.KeyW) || @system.is_pressed(@system.ArrowUp) {
+          input_vector = input_vector.update(Y, input_vector[Y] - 1.0)
+        }
+        if @system.is_pressed(@system.KeyS) || @system.is_pressed(@system.ArrowDown) {
+          input_vector = input_vector.update(Y, input_vector[Y] + 1.0)
+        }
+        if @system.is_pressed(@system.KeyA) || @system.is_pressed(@system.ArrowLeft) {
+          input_vector = input_vector.update(X, input_vector[X] - 1.0)
+        }
+        if @system.is_pressed(@system.KeyD) || @system.is_pressed(@system.ArrowRight) {
+          input_vector = input_vector.update(X, input_vector[X] + 1.0)
+        }
+
+        if input_vector.distance_to(@math.Vec2D::zero()) > 0.01 {
+          let target_direction = input_vector.normalize()
+          let current_direction = player_facing_vector.val
+          let angle_difference = signed_angle_between(current_direction, target_direction)
+          
+          let turn_angle = angle_difference * PLAYER_PROPORTIONAL_TURN_FACTOR
+          
+          player_facing_vector.val = rotate_vec2d(current_direction, turn_angle)
+        }
+      }
+    }
+
+    let final_velocity = player_facing_vector.val.normalize().scalar_mul(PLAYER_SPEED)
+    @velocity.velocities.set(head_entity, final_velocity)
+  }
+}
 /// 系统：为每个拥有 PathHistory 组件的单位录制其历史轨迹点。
 fn path_history_system(_backend: &@system.Backend) -> Unit {
   for unit in path_histories.keys() {

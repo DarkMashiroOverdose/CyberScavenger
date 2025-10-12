@@ -29,6 +29,7 @@ let squad_guide_shown: Ref[Bool] = Ref::new(false)
 let current_guide_image_index: Ref[Int] = Ref::new(0)
 let is_guide_active: Ref[Bool] = Ref::new(false)
 
+let control_scheme_button: Ref[Option[@system.Entity]] = Ref::new(None)
 pub enum ButtonAction {
   SwitchState(UIState)
   SelectUnit(UnitType)
@@ -37,6 +38,7 @@ pub enum ButtonAction {
   SetShapeFilter(Option[UnitShape])   // 设置形状筛选
   UnlockAudio
   NextGuidePage
+  ToggleControlScheme
 } derive(Eq)
 
 pub struct Button {
@@ -402,8 +404,13 @@ fn setup_ingame_hud() -> Unit {
   let tutorial_label = @system.Entity::new()
   @position.positions.set(tutorial_label, @math.Vec2D(200.0, 680.0))
   
+  let initial_tutorial_text = match current_control_scheme.val {
+    ControlScheme::ADTurn => "按“A”键可左转，按“D”键可右转，按“P”键可暂停"
+    ControlScheme::WASDDirect => "使用 WASD 或方向键移动，按“P”键可暂停"
+  }
+  
   let tutorial_layout = @system.TextLayout::new(
-    "按“A”键可左转，按“D”键可右转，按“P”键可暂停", 
+    initial_tutorial_text,
     font="36px mplus_hzk", 
     color="gray", 
     align=@system.TextAlign::center()
@@ -464,6 +471,29 @@ pub fn update_wave_display_system(_backend: &@system.Backend) -> Unit {
 }
 fn setup_settings_ui() -> Unit {
 
+  let button_entity = @system.Entity::new()
+  let button_pos = @math.Vec2D(640.0, 300.0) 
+  @position.positions.set(button_entity, button_pos)
+  
+  let initial_text = "操作模式: AD转向" // 初始文本保持不变
+  let layout = @system.TextLayout::new(initial_text, font="bold 24px mplus_hzk", color="white", align=@system.TextAlign::center())
+  let sprite = @sprite.Sprite::from_text_layout(layout, 5, layer=@sprite.RenderLayer::ui())
+  @sprite.sprites.set(button_entity, sprite)
+  
+  let button_comp = Button::{
+    area: @math.Rect::{ position: button_pos, size: @math.Vec2D(300.0, 50.0) }, // 可以把按钮区域改大一点
+    action: ButtonAction::ToggleControlScheme,
+    normal_appearance: ButtonAppearance::FromTextLayout(layout),
+    hover_appearance: ButtonAppearance::FromTextLayout(
+      @system.TextLayout::new(initial_text, font="bold 24px mplus_hzk", color="yellow", align=@system.TextAlign::center())
+    ),
+    is_hovered: false,
+  }
+  buttons.set(button_entity, button_comp)
+  ui_entities.val.push(button_entity)
+  control_scheme_button.val = Some(button_entity)
+
+
   let back_button_entity = @system.Entity::new()
   @position.positions.set(back_button_entity, @math.Vec2D(400.0, 450.0))
   let back_text = @sprite.Text::new("---WIP---[Back to Main Menu]", font="32px mplus_hzk")
@@ -487,7 +517,49 @@ fn setup_settings_ui() -> Unit {
   buttons.set(back_button_entity, back_button_component)
   ui_entities.val.push(back_button_entity)
 }
+fn update_control_scheme_display() -> Unit {
+  if control_scheme_button.val is Some(entity) {
+    if @sprite.sprites.get(entity) is Some(old_sprite) {
+      let current_text = match current_control_scheme.val {
+        ControlScheme::ADTurn => "操作模式: AD转向"
+        ControlScheme::WASDDirect => "操作模式: WASD全方向"
+      }
+      if old_sprite.sprite_type is @sprite.SpriteType::TextLayout(old_layout) {
+        if old_layout.content != current_text {
+          
+          let new_layout = @system.TextLayout::new(
+            current_text,
+            font=old_layout.font,
+            color=old_layout.color,
+            max_width=old_layout.max_width,
+            align=old_layout.align,
+            line_height=old_layout.line_height
+          )
+          
+          let new_sprite = @sprite.Sprite::from_text_layout(new_layout, old_sprite.zindex, layer=old_sprite.layer)
+          @sprite.sprites.set(entity, new_sprite)
 
+          if buttons.get(entity) is Some(button) {
+              let new_hover_layout = @system.TextLayout::new(
+                  current_text, 
+                  font=old_layout.font,
+                  color="yellow", 
+                  max_width=old_layout.max_width,
+                  align=old_layout.align,
+                  line_height=old_layout.line_height
+              )
+              
+              buttons.set(entity, { 
+                  ..button, 
+                  normal_appearance: ButtonAppearance::FromTextLayout(new_layout),
+                  hover_appearance: ButtonAppearance::FromTextLayout(new_hover_layout),
+              })
+          }
+        }
+      }
+    }
+  }
+}
 fn setup_squad_builder_ui() -> Unit {
   if !squad_guide_shown.val {
     println("【UI】: 首次进入组队界面，显示新手引导...")
@@ -1106,6 +1178,10 @@ pub fn update_ui_system(_backend: &@system.Backend) -> Unit {
     update_detail_panel() 
     update_synergy_panel()
   }
+  
+  if current_ui_state.val == UIState::Settings {
+    update_control_scheme_display()
+  }
 }
 
 pub fn button_system(backend: &@system.Backend) -> Unit {
@@ -1272,6 +1348,13 @@ pub fn button_system(backend: &@system.Backend) -> Unit {
               println("【UI】: 组队引导已完成，进入正常组队界面。")
               squad_guide_shown.val = true 
             }
+          }
+          return 
+        }
+        ButtonAction::ToggleControlScheme => {
+          current_control_scheme.val = match current_control_scheme.val {
+            ControlScheme::ADTurn => ControlScheme::WASDDirect
+            ControlScheme::WASDDirect => ControlScheme::ADTurn
           }
           return 
         }
