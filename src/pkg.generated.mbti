@@ -1,0 +1,447 @@
+// Generated using `moon info`, DON'T EDIT IT
+package "SuYiTao-SYT/CyberScavenger"
+
+import(
+  "Milky2018/selene/math"
+  "Milky2018/selene/sprite"
+  "Milky2018/selene/system"
+  "moonbitlang/core/json"
+)
+
+// Values
+let active_buffs : Map[@system.Entity, Array[BuffInstance]]
+
+fn add_buff(@system.Entity, BuffType, Double) -> Unit
+
+fn add_score(Int) -> Unit
+
+fn audio_spawner_system(&@system.Backend) -> Unit
+
+fn button_system(&@system.Backend) -> Unit
+
+let buttons : Map[@system.Entity, Button]
+
+fn check_game_over_system(&@system.Backend) -> Unit
+
+let cooldown_ability_units : Map[@system.Entity, CooldownAbilityUnit]
+
+let current_control_scheme : Ref[ControlScheme]
+
+fn dynamic_transform_system(&@system.Backend) -> Unit
+
+let dynamic_transforms : Map[@system.Entity, DynamicTransform]
+
+fn endless_spawner_system(&@system.Backend) -> Unit
+
+fn enemy_movement_system(&@system.Backend) -> Unit
+
+fn hazardous_area_system(&@system.Backend) -> Unit
+
+let hazardous_areas : Map[@system.Entity, HazardousArea]
+
+fn old_player_control_system(&@system.Backend) -> Unit
+
+fn pause_toggle_system(&@system.Backend) -> Unit
+
+fn player_control_system(&@system.Backend) -> Unit
+
+fn player_train_management_system(&@system.Backend) -> Unit
+
+fn projectile_system(&@system.Backend) -> Unit
+
+let score_values : Map[@system.Entity, ScoreValue]
+
+let selected_squad : Ref[Array[UnitType]]
+
+fn setup_sfx_library() -> Unit
+
+let sfx_library : Map[SFX_Type, SFX_Template]
+
+let sfx_requests : Ref[Array[SFX_Request]]
+
+let sizes : Map[@system.Entity, Size]
+
+fn spawn_enemy(EnemyType, @math.Vec2D) -> Unit
+
+fn spawn_kill_score_vfx(Int, @math.Vec2D) -> Unit
+
+fn spawn_player_unit_by_type(UnitType, @math.Vec2D) -> Unit
+
+let synergy_database : Map[SynergyTag, SynergyInfo]
+
+let synergy_tags : Map[@system.Entity, SynergyTag]
+
+let team_abilities : Map[@system.Entity, TeamAbility]
+
+fn team_ability_system(&@system.Backend) -> Unit
+
+fn train_snake_follow_system(&@system.Backend) -> Unit
+
+let unit_definitions : Map[UnitType, UnitDefinition]
+
+fn unit_orientation_system(&@system.Backend) -> Unit
+
+let unit_shapes : Map[@system.Entity, UnitShape]
+
+fn update_game_world_system(&@system.Backend) -> Unit
+
+fn update_score_display_system(&@system.Backend) -> Unit
+
+fn update_ui_system(&@system.Backend) -> Unit
+
+fn update_unit_orientation(@system.Entity, @math.Vec2D) -> Unit
+
+fn update_wave_display_system(&@system.Backend) -> Unit
+
+fn vfx_follow_system(&@system.Backend) -> Unit
+
+let vfx_follows : Map[@system.Entity, VFX_Follow]
+
+let vfx_instances : Map[@system.Entity, VFX_Lifecycle]
+
+let vfx_library : Map[VFX_Type, VFX_Template]
+
+fn vfx_movement_system(&@system.Backend) -> Unit
+
+let vfx_movements : Map[@system.Entity, VFX_Movement]
+
+let vfx_requests : Ref[Array[VFX_Request]]
+
+fn vfx_spawner_system(&@system.Backend) -> Unit
+
+fn vfx_update_system(&@system.Backend) -> Unit
+
+fn wall_bounce_system(&@system.Backend, Double, Double) -> Unit
+
+// Errors
+
+// Types and methods
+pub enum AttackType {
+  Melee
+  Bullet
+  Ranged
+  AoE
+}
+impl Show for AttackType
+
+pub struct BeamTemplate {
+  color : String
+  thickness : Double
+}
+
+pub struct BuffInstance {
+  buff_type : BuffType
+  remaining_duration : Double
+}
+
+pub enum BuffType {
+  AddDamage(Double)
+  MultiplyDamage(Double)
+  AddCritRate(Double)
+  MultiplyEffectDuration(Double)
+  MultiplyCooldown(Double)
+  AddAttackRange(Double)
+  MultiplySpeed(Double)
+}
+impl Show for BuffType
+
+pub struct Button {
+  area : @math.Rect
+  action : ButtonAction
+  normal_appearance : ButtonAppearance
+  hover_appearance : ButtonAppearance
+  mut is_hovered : Bool
+}
+
+pub enum ButtonAction {
+  SwitchState(UIState)
+  SelectUnit(UnitType)
+  DeselectUnit(Int)
+  SetSynergyFilter(SynergyTag?)
+  SetShapeFilter(UnitShape?)
+  UnlockAudio
+  NextGuidePage
+  ToggleControlScheme
+}
+impl Eq for ButtonAction
+
+pub enum ButtonAppearance {
+  FromPicture(String, @math.Vec2D)
+  FromAnimation(@sprite.Animation)
+  FromText(@sprite.Text)
+  FromShape(@sprite.ColoredShape, @math.Vec2D)
+  FromTextLayout(@system.TextLayout)
+}
+
+pub struct CombatStats {
+  attack_range : Double
+  on_hit_effects : Array[OnHitEffect]
+  attack_cooldown : Double
+  current_cooldown : Double
+  aggro_range : Double
+  attack_type : AttackType
+  aoe_radius : Double
+  crit_rate : Double
+  attack_cast_vfx : VFX_Type?
+  area_effect_vfx : VFX_Type?
+  attack_sfx : SFX_Type?
+  bullet_color : String?
+}
+
+pub enum ControlScheme {
+  ADTurn
+  WASDDirect
+}
+
+pub struct CooldownAbilityUnit {
+}
+
+pub struct DynamicTransform {
+  is_pulsing_scale : Bool
+  rotation_speed : Double
+  scale_speed : Double
+  scale_amplitude : Double
+  _current_angle : Double
+  _time_elapsed : Double
+}
+
+pub enum EnemyType {
+  Grunt
+  TankEnemy
+  Archer
+  Bomber
+}
+impl Eq for EnemyType
+impl Show for EnemyType
+impl @json.FromJson for EnemyType
+
+pub struct HazardousArea {
+  source : @system.Entity
+  source_team : Team
+  on_tick_effects : Array[OnHitEffect]
+  radius : Double
+  remaining_duration : Double
+  tick_timer : Double
+}
+
+type Health
+
+type MovementStats
+
+pub enum OnHitEffect {
+  DealDamage(Double, VFX_Type?)
+  ApplyBuff(BuffType, Double, VFX_Type?)
+  CreateHazardousArea(Array[OnHitEffect], Double, Double, VFX_Type?)
+  AreaOfEffect(Array[OnHitEffect], Double, VFX_Type?)
+  Knockback(Double)
+  Heal(Double, VFX_Type?)
+  Chain(Array[OnHitEffect], Int, Double, Double, VFX_Type?)
+  Fork(Array[OnHitEffect], Int, Double, VFX_Type?)
+}
+
+type PathHistory
+
+pub enum PlayerUnitType {
+  OrangeSquare
+  OrangeTriangle
+  OrangeCircle
+}
+
+type Projectile
+
+pub struct SFX_Request {
+  sfx_type : SFX_Type
+  position : @math.Vec2D?
+}
+
+pub struct SFX_Template {
+  path : String
+  default_volume : Double
+}
+
+pub enum SFX_Type {
+  PlayerShoot
+  EnemyShoot
+  EnemyHit
+  Explosion
+  UITick
+  Dead
+  Select
+}
+impl Eq for SFX_Type
+impl Hash for SFX_Type
+impl Show for SFX_Type
+
+pub struct ScoreValue {
+  value : Int
+}
+
+pub struct Size {
+  radius : Double
+}
+
+pub enum SpriteTemplate {
+  Picture(String, @math.Vec2D)
+  Shape(@sprite.Shape, @sprite.DrawStyle)
+  Animation(@sprite.Animation, @math.Vec2D)
+  TextLayout(@system.TextLayout)
+  Beam(BeamTemplate)
+  FromParent
+}
+
+type SquadSlot
+
+pub struct SynergyInfo {
+  name : String
+  description : String
+  tiers : Array[SynergyTier]
+  state : String
+}
+
+pub enum SynergyTag {
+  Orange
+  Purple
+  Green
+  Blue
+}
+impl Eq for SynergyTag
+impl Hash for SynergyTag
+impl Show for SynergyTag
+
+pub struct SynergyTier {
+  count : Int
+  bonus_value : Double
+  bonus_text : String
+}
+
+pub enum TargetingRule {
+  Self_
+  AllAllies
+  LowestHealthAlly
+}
+
+type Team
+impl Eq for Team
+impl Show for Team
+
+pub struct TeamAbility {
+  effects : Array[OnHitEffect]
+  cooldown : Double
+  mut current_cooldown : Double
+  targeting_rule : TargetingRule
+  cast_vfx : VFX_Type?
+  cast_sfx : SFX_Type?
+}
+
+type TrainCar
+
+pub enum UIState {
+  MainMenu
+  InGame
+  SquadBuilder
+  Settings
+  GameOver
+}
+impl Eq for UIState
+
+pub struct UnitDefinition {
+  name : String
+  color_tag : SynergyTag
+  shape_tag : UnitShape
+  hp : Int
+  atk : Int
+  gdd : String
+}
+
+pub enum UnitShape {
+  Square
+  Triangle
+  Circle
+}
+impl Eq for UnitShape
+impl Hash for UnitShape
+impl Show for UnitShape
+
+pub enum UnitType {
+  OrangeSquare
+  OrangeTriangle
+  OrangeCircle
+  PurpleSquare
+  PurpleTriangle
+  PurpleCircle
+  GreenSquare
+  GreenTriangle
+  GreenCircle
+  BlueSquare
+  BlueTriangle
+  BlueCircle
+}
+impl Eq for UnitType
+impl Hash for UnitType
+impl Show for UnitType
+
+pub struct VFX_Behavior {
+  lifecycle : VFX_Lifecycle
+  dynamic_transform : DynamicTransform?
+}
+
+pub struct VFX_Follow {
+  parent : @system.Entity
+  offset : @math.Vec2D
+}
+
+pub struct VFX_Instance {
+  total_duration : Double
+  remaining_duration : Double
+}
+
+pub enum VFX_Lifecycle {
+  Timer(Double)
+  OnAnimationFinish
+}
+impl Show for VFX_Lifecycle
+
+pub struct VFX_Movement {
+  velocity : @math.Vec2D
+}
+
+pub struct VFX_Request {
+  vfx_type : VFX_Type
+  position : @math.Vec2D
+  rotation : Double
+  parent_entity : @system.Entity?
+  to_position : @math.Vec2D?
+}
+
+pub struct VFX_Template {
+  sprite_template : SpriteTemplate
+  behavior : VFX_Behavior
+  z_index : Int
+}
+
+pub enum VFX_Type {
+  MeleeSlash
+  BulletImpact
+  PoisonCloud
+  PoisonCloudRed
+  SpeedLow
+  AoEMeeleRed
+  AoEMeeleOrange
+  Healing
+  CooldownUp
+  PrimaryBeam
+  ChainBeam
+  PrimaryBeamBoom
+  ChainBeamBoom
+  ForkBeam
+  ForkBeamBoom
+  HitFlash
+}
+impl Eq for VFX_Type
+impl Hash for VFX_Type
+impl Show for VFX_Type
+
+// Type aliases
+
+// Traits
+

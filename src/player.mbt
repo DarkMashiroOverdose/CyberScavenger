@@ -38,7 +38,8 @@ const MAX_HISTORY_LENGTH: Int = 500    // 单个单位轨迹的最大记录长�
 pub enum ControlScheme {
   ADTurn     // AD左右转向
   WASDDirect // WASD全向转向
-}
+  Joystick  // 手机摇杆
+}derive(Eq)
 
 ///当前选择的操作模式
 pub let current_control_scheme: Ref[ControlScheme] = Ref::new(ControlScheme::ADTurn)
@@ -71,6 +72,8 @@ pub fn player_control_system(_backend: &@system.Backend) -> Unit {
   let delta_seconds = 1.0 / 60.0
   if player_head.val is Some(head_entity) {
 
+    let mut target_direction_opt: Option[@math.Vec2D] = None
+
     match current_control_scheme.val {
       
       ControlScheme::ADTurn => {
@@ -101,17 +104,26 @@ pub fn player_control_system(_backend: &@system.Backend) -> Unit {
         if @system.is_pressed(@system.KeyD) || @system.is_pressed(@system.ArrowRight) {
           input_vector = input_vector.update(X, input_vector[X] + 1.0)
         }
-
+        
         if input_vector.distance_to(@math.Vec2D::zero()) > 0.01 {
-          let target_direction = input_vector.normalize()
-          let current_direction = player_facing_vector.val
-          let angle_difference = signed_angle_between(current_direction, target_direction)
-          
-          let turn_angle = angle_difference * PLAYER_PROPORTIONAL_TURN_FACTOR
-          
-          player_facing_vector.val = rotate_vec2d(current_direction, turn_angle)
+          target_direction_opt = Some(input_vector.normalize())
         }
       }
+
+      ControlScheme::Joystick => {
+        if joystick.val is Some(joy) {
+          if joy.direction.distance_to(@math.Vec2D::zero()) > 0.01 {
+            target_direction_opt = Some(joy.direction.normalize())
+          }
+        }
+      }
+    }
+
+    if target_direction_opt is Some(target_direction) {
+      let current_direction = player_facing_vector.val
+      let angle_difference = signed_angle_between(current_direction, target_direction)
+      let turn_angle = angle_difference * PLAYER_PROPORTIONAL_TURN_FACTOR
+      player_facing_vector.val = rotate_vec2d(current_direction, turn_angle)
     }
 
     let final_velocity = player_facing_vector.val.normalize().scalar_mul(PLAYER_SPEED)

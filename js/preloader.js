@@ -108,19 +108,24 @@ async function main() {
 }
 
 function startGame() {
-    console.log("[Preloader] All assets loaded. Starting game systems...");
-    const loadingScreen = document.getElementById('loading-screen');
-    const canvasContainer = document.getElementById('canvas-container');
-    
-    loadingScreen.style.display = 'none';
-    canvasContainer.style.display = 'block';
+  console.log("[Preloader] All assets loaded. Starting game systems...");
+  const loadingScreen = document.getElementById('loading-screen');
+  const canvasContainer = document.getElementById('canvas-container');
+  
+  if (loadingScreen) loadingScreen.style.display = 'none';
+  if (canvasContainer) canvasContainer.style.display = 'block';
 
+  const script = document.createElement('script');
+  script.src = "./target/js/release/build/CyberScavenger.js";
+  script.defer = true;
+
+  script.onload = function() {
+    console.log("[Preloader] CyberScavenger.js loaded. Starting post-processing loop.");
     startPostProcessingLoop();
-
-    const script = document.createElement('script');
-    script.src = "./target/js/release/build/CyberScavenger.js";
-    script.defer = true;
-    document.body.appendChild(script);
+  };
+  
+  // 4. 将脚本添加到页面，开始加载
+  document.body.appendChild(script);
 }
 
 window.addEventListener('load', main);

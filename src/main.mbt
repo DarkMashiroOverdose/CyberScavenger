@@ -11,11 +11,13 @@ fn main {
     
     // 注册UI逻辑更新
     .add_system(button_system, schedule=@system.Schedule::Update)
+    .add_system(joystick_system, schedule=@system.Schedule::Update)
     .add_system(update_ui_system, schedule=@system.Schedule::Update)
     //游戏运行
     
     .add_system(update_logic_system, schedule=@system.Schedule::Update)
     
+    .add_system(@system.advanced_touch_system, schedule=@system.Schedule::Update) 
     .add_system(@system.advanced_key_system, schedule=@system.Schedule::Update)
     .add_system(@system.advanced_mouse_system, schedule=@system.Schedule::Update)
     .add_system(pause_toggle_system, schedule=@system.Schedule::Update)

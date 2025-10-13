@@ -57,6 +57,16 @@ pub enum ButtonAppearance {
 }
 pub let buttons : Map[@system.Entity, Button] = Map::new()
 
+fn is_point_inside_centered_rect(point: @math.Vec2D, rect_area: @math.Rect) -> Bool {
+  let rect_pos = rect_area.position
+  let rect_size = rect_area.size
+  
+  point[X] >= rect_pos[X] - (rect_size[X] / 2.0) && 
+  point[X] <= rect_pos[X] + (rect_size[X] / 2.0) &&
+  point[Y] >= rect_pos[Y] - (rect_size[Y] / 2.0) &&
+  point[Y] <= rect_pos[Y] + (rect_size[Y] / 2.0)
+}
+
 // ---------------------------
 // 2. UI 元素创建与销毁
 // ---------------------------
@@ -407,6 +417,7 @@ fn setup_ingame_hud() -> Unit {
   let initial_tutorial_text = match current_control_scheme.val {
     ControlScheme::ADTurn => "按“A”键可左转，按“D”键可右转，按“P”键可暂停"
     ControlScheme::WASDDirect => "使用 WASD 或方向键移动，按“P”键可暂停"
+    ControlScheme::Joystick  => "使用虚拟摇杆移动"
   }
   
   let tutorial_layout = @system.TextLayout::new(
@@ -422,6 +433,10 @@ fn setup_ingame_hud() -> Unit {
 
   ui_entities.val.push(tutorial_label)
   tutorial_text_entity.val = Some(tutorial_label)
+
+  if current_control_scheme.val == ControlScheme::Joystick {
+    setup_joystick_ui()
+  }
 }
 pub fn update_wave_display_system(_backend: &@system.Backend) -> Unit {
   if current_ui_state.val == UIState::InGame {
@@ -523,6 +538,7 @@ fn update_control_scheme_display() -> Unit {
       let current_text = match current_control_scheme.val {
         ControlScheme::ADTurn => "操作模式: AD转向"
         ControlScheme::WASDDirect => "操作模式: WASD全方向"
+        ControlScheme::Joystick => "操作模式: 虚拟摇杆"
       }
       if old_sprite.sprite_type is @sprite.SpriteType::TextLayout(old_layout) {
         if old_layout.content != current_text {
@@ -1183,45 +1199,42 @@ pub fn update_ui_system(_backend: &@system.Backend) -> Unit {
     update_control_scheme_display()
   }
 }
-
 pub fn button_system(backend: &@system.Backend) -> Unit {
-  //获取实时鼠标位置
-  let mouse_pos = @system.mouse.pos
-  let mut found_hovered_unit = false
+  let mut click_pos_opt: Option[@math.Vec2D] = None
+  if @system.is_mouse_just_pressed(@system.MouseButton::Left) {
+    click_pos_opt = Some(@system.mouse.pos)
+  } else if !@system.just_began_touches.is_empty() {
+    let touches_array = @system.just_began_touches.values().to_array()
+    if touches_array.length() > 0 {
+      click_pos_opt = Some(touches_array[0].pos)
+    }
+  }
 
-  //遍历所有按钮
-  for entry in buttons.iter() {
-    let entity = entry.0
-    let button = entry.1
+  // 统一检测鼠标或手指的悬停位置
+  let active_pointers: Array[@math.Vec2D] = [@system.mouse.pos]
+  for touch in @system.active_touches.values() {
+    active_pointers.push(touch.pos)
+  }
 
-    if @sprite.sprites.get(entity) is Some(sprite) {
-      //如果sprite 是不可见的，就直接跳过
-      if !sprite.visible {
-        continue 
+  for entry in buttons.to_array() {
+    let (entity, button) = entry 
+
+    if @sprite.sprites.get(entity) is Some(sprite) && !sprite.visible {
+      continue 
+    }
+
+    let mut is_currently_hovered = false
+    for pointer_pos in active_pointers {
+      if is_point_inside_centered_rect(pointer_pos, button.area) {
+        is_currently_hovered = true
+        break
       }
     }
-    let rect_pos = button.area.position
-    let rect_size = button.area.size
-    
-    //判断鼠标当在按钮内
-    let is_inside = 
-      mouse_pos.0 >= rect_pos.0 - (rect_size.0)/2 && 
-      mouse_pos.0 <= rect_pos.0 + (rect_size.0)/2 &&
-      mouse_pos.1 >= rect_pos.1 - (rect_size.1)/2 &&
-      mouse_pos.1 <= rect_pos.1 + (rect_size.1)/2
-    
-    //只在悬停状态发生改变时，才更新Sprite
-    if is_inside != button.is_hovered {
-      println("Hovered")
-      sfx_requests.val.push({ sfx_type: Select, position: None })
-      button.is_hovered = is_inside
-      
-      let new_appearance_to_show = if is_inside {
-        button.hover_appearance
-      } else {
-        button.normal_appearance
-      }
 
+    if is_currently_hovered != button.is_hovered {
+      button.is_hovered = is_currently_hovered
+      let new_appearance_to_show = if is_currently_hovered { button.hover_appearance } else { button.normal_appearance }
+      
       if @sprite.sprites.get(entity) is Some(current_sprite) {
           let new_sprite = match new_appearance_to_show {
             ButtonAppearance::FromPicture(path, size) => {
@@ -1269,28 +1282,12 @@ pub fn button_system(backend: &@system.Backend) -> Unit {
           @sprite.sprites.set(entity, new_sprite)
       }
     }
-    if is_inside {
-      match button.action {
-        ButtonAction::SelectUnit(unit_type) => {
-          hovered_unit_for_detail_view.val = Some(unit_type)
-          found_hovered_unit = true
-        }
-        _ => {
-          println("【动作】: 切换场景到 {target_state}")
-        }
-      }
-    }
-    if is_guide_active.val {
-      if button.action != ButtonAction::NextGuidePage {
-        continue 
-      }
-    }
-    if is_inside && @system.is_mouse_just_pressed(@system.MouseButton::Left) {
-      sfx_requests.val.push({
-        sfx_type: SFX_Type::Select, // 使用你已有的 Select 类型
-        position: None
-      })
-      match button.action {
+
+    if click_pos_opt is Some(click_pos) {
+      if is_point_inside_centered_rect(click_pos, button.area) {
+        sfx_requests.val.push({ sfx_type: SFX_Type::Select, position: None })
+        
+        match button.action {
         ButtonAction::SwitchState(target_state) => {
           current_ui_state.val = target_state
           println("【动作】: 切换场景到 {target_state}")
@@ -1354,15 +1351,17 @@ pub fn button_system(backend: &@system.Backend) -> Unit {
         ButtonAction::ToggleControlScheme => {
           current_control_scheme.val = match current_control_scheme.val {
             ControlScheme::ADTurn => ControlScheme::WASDDirect
-            ControlScheme::WASDDirect => ControlScheme::ADTurn
+            ControlScheme::WASDDirect => ControlScheme::Joystick
+            ControlScheme::Joystick => ControlScheme::ADTurn
           }
           return 
         }
       }
+        
+        return
+      }
     }
   }
-  if !found_hovered_unit {
-    hovered_unit_for_detail_view.val = None
-  }
 }
+
         
