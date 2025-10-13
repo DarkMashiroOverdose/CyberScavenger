@@ -32,14 +32,14 @@ let entities_to_cleanup: Ref[Array[@system.Entity]] = Ref::new([])
 /// 实体清理系统
 fn cleanup_system(_backend: &@system.Backend) -> Unit {
   if entities_to_cleanup.val.length() > 0 {
-    // 1. 在清理组件前，先处理所有可能的断链逻辑
+    // 在清理组件前，先处理所有可能的断链逻辑
     for dead_unit in entities_to_cleanup.val {
       if teams.get(dead_unit) is Some(Team::Player) {
         relink_train_chain(dead_unit)
       }
     }
 
-    // 2. 执行通用的、彻底的清理逻辑
+    // 执行通用的、彻底的清理逻辑
     for dead_unit in entities_to_cleanup.val {
       println("[Log] Cleanup System is processing: \{dead_unit}")
 
@@ -65,15 +65,23 @@ fn cleanup_system(_backend: &@system.Backend) -> Unit {
       attack_targets.remove(dead_unit)
       @position.positions.remove(dead_unit)
       @velocity.velocities.remove(dead_unit)
-      train_cars.remove(dead_unit) // 移除 TrainCar 组件
+      train_cars.remove(dead_unit)
+      score_values.remove(dead_unit)
+      movement_stats.remove(dead_unit)
+      sizes.remove(dead_unit)
+      vfx_follows.remove(dead_unit) // 移除可能跟随它的VFX关系
+
+      // 清理团队技能和相关标记
+      team_abilities.remove(dead_unit)
+      cooldown_ability_units.remove(dead_unit)
     }
 
-    // 3. 更新主逻辑列表
+    // 更新主逻辑列表
     all_units.val = all_units.val.filter(fn(unit) {
       !entities_to_cleanup.val.contains(unit)
     })
 
-    // 4. 清空垃圾回收列表
+    // 清空垃圾回收列表
     entities_to_cleanup.val.clear()
   }
 }
