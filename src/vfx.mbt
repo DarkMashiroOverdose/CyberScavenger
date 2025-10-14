@@ -20,6 +20,7 @@ pub enum VFX_Type {
   ForkBeam
   ForkBeamBoom
   HitFlash
+  ChargeShieldEffect
 } derive(Eq, Show, Hash)
 ///光束类型特效
 pub struct BeamTemplate {
@@ -33,7 +34,14 @@ pub enum SpriteTemplate {
   Animation(@sprite.Animation, @math.Vec2D)
   TextLayout(@system.TextLayout) 
   Beam(BeamTemplate)
-  FromParent
+  FromParent(ParentCloneTemplate)
+}
+
+// 从父实体克隆并修改 Sprite
+pub struct ParentCloneTemplate {
+  color_override: String // 覆盖的颜色
+  size_padding: Double   // 在父实体尺寸基础上增加的像素值
+  z_index_offset: Int    // 相对于父实体 Sprite 的 Z 轴偏移
 }
 /// 用一个结构体来描述特效的【动态行为】
 pub struct VFX_Behavior {
@@ -287,13 +295,15 @@ fn setup_vfx_library() -> Unit {
     z_index: 300,
   })
   vfx_library.set(VFX_Type::HitFlash, {
-    sprite_template: SpriteTemplate::FromParent,
-    behavior: { 
-      lifecycle: VFX_Lifecycle::Timer(0.12),
-      dynamic_transform: None 
-    },
-    z_index: 500,
+    sprite_template: SpriteTemplate::FromParent({
+      color_override: "#FFFFFF", // 白色
+      size_padding: 0.0,         // 尺寸不变
+      z_index_offset: 300,       // 显示在最上层
+    }),
+    behavior: { lifecycle: VFX_Lifecycle::Timer(0.08), dynamic_transform: None },
+    z_index: 0,
   })
+  
 }
 
 // ---------------------------------
@@ -384,7 +394,7 @@ pub fn vfx_spawner_system(_backend: &@system.Backend) -> Unit {
             @sprite.Sprite::from_shape(@sprite.ColoredShape::new(@sprite.Shape::rect(0.0,0.0,0.0),@sprite.DrawStyle::fill("transparent")),0)
           }
         }
-        SpriteTemplate::FromParent => {
+        SpriteTemplate::FromParent(clone_template) => {
           if request.parent_entity is Some(parent_entity) {
             if @sprite.sprites.get(parent_entity) is Some(parent_sprite) {
               // 尝试从父Sprite中复制形状信息
@@ -410,19 +420,48 @@ pub fn vfx_spawner_system(_backend: &@system.Backend) -> Unit {
               }
 
               if original_shape_opt is Some(shape) {
-                let white_graphic = @sprite.ColoredShape::new(
-                  shape,
-                  @sprite.DrawStyle::fill("#FFFFFF") // 强制白色填充
+
+                let (new_shape, new_offset) = match shape {
+                  @sprite.Shape::Circle(r) => {
+                    let new_radius = r + clone_template.size_padding
+                    (
+                      @sprite.Shape::circle(new_radius), 
+                      parent_sprite.offset 
+                    )
+                  }
+                  @sprite.Shape::Rect(w, h, corner_radius) => {
+                    let new_w = w + clone_template.size_padding * 2.0
+                    let new_h = h + clone_template.size_padding * 2.0
+                    (
+                      @sprite.Shape::rect(new_w, new_h, corner_radius),
+                      @math.Vec2D(-new_w / 2.0, -new_h / 2.0) 
+                    )
+                  }
+                  @sprite.Shape::Triangle(s, rotation) => {
+                    let new_s = s + clone_template.size_padding * 2.0
+                    (
+                      @sprite.Shape::triangle(new_s, rotation),
+                      parent_sprite.offset 
+                    )
+                  }
+                  _ => (shape, parent_sprite.offset) 
+                }
+
+                let new_graphic = @sprite.ColoredShape::new(
+                  new_shape,
+                  @sprite.DrawStyle::fill(clone_template.color_override)
                 )
-                let flash_sprite = @sprite.Sprite::from_shape(
-                  white_graphic,
-                  template.z_index,
-                  offset=parent_sprite.offset, // 复制父级的offset
+                let new_z_index = parent_sprite.zindex + clone_template.z_index_offset
+
+                let new_sprite = @sprite.Sprite::from_shape(
+                  new_graphic,
+                  new_z_index,
+                  offset=new_offset,
                   layer=@sprite.RenderLayer::game_world(),
                 )
-                // 复制父级的旋转
-                flash_sprite.transform = parent_sprite.transform 
-                flash_sprite
+                // 继承父级的旋转和缩放
+                new_sprite.transform = parent_sprite.transform 
+                new_sprite
               } else { // 这些else都是处理空情况的
                 @sprite.Sprite::from_shape(@sprite.ColoredShape::new(@sprite.Shape::rect(0.0,0.0,0.0),@sprite.DrawStyle::fill("transparent")),0)
               }
@@ -466,7 +505,7 @@ pub fn vfx_spawner_system(_backend: &@system.Backend) -> Unit {
 /// 特效更新器,计算剩余时间
 pub fn vfx_update_system(_backend: &@system.Backend) -> Unit {
   let delta_seconds = 1.0 / 60.0
-
+  
   for entity in vfx_instances.keys() {
     if vfx_instances.get(entity) is Some(instance_lifecycle) {
 

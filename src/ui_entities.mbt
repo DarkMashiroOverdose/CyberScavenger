@@ -9,6 +9,7 @@ struct Health {
   max: Double
   bar_bg_entity: @system.Entity
   bar_fg_entity: @system.Entity
+  shield_frame_entity: @system.Entity
 }
 
 let healths: Map[@system.Entity, Health] = Map::new()
@@ -17,9 +18,10 @@ const HEALTH_BAR_HEIGHT: Double = 5.0
 const HEALTH_BAR_Y_OFFSET: Double = 3.0
 
 ///为单位附加血条
-fn attach_health_bar() -> (@system.Entity, @system.Entity) {
+fn attach_health_bar() -> (@system.Entity, @system.Entity, @system.Entity) {
   let bar_bg = @system.Entity::new()
   let bar_fg = @system.Entity::new()
+  let shield_frame = @system.Entity::new() 
 
   let bg_color_rect = @sprite.ColorRect::new(@math.Vec2D(HEALTH_BAR_WIDTH, HEALTH_BAR_HEIGHT), "red")
   let fg_color_rect = @sprite.ColorRect::new(@math.Vec2D(HEALTH_BAR_WIDTH, HEALTH_BAR_HEIGHT), "lime")
@@ -32,8 +34,18 @@ fn attach_health_bar() -> (@system.Entity, @system.Entity) {
   @sprite.sprites.set(bar_bg, bg_sprite)
   @sprite.sprites.set(bar_fg, fg_sprite)
   
-  // 只返回创建好的实体
-  return (bar_bg, bar_fg)
+  let frame_width = HEALTH_BAR_WIDTH + 10.0
+  let frame_height = HEALTH_BAR_HEIGHT + 2.0
+  let shield_frame_rect = @sprite.ColorRect::new(@math.Vec2D(frame_width, frame_height), "#00FFFF")
+  let frame_sprite = @sprite.Sprite::from_color_rect(
+    shield_frame_rect,
+    7,
+    layer=@sprite.RenderLayer::ui()
+  )
+  frame_sprite.visible = false
+  @sprite.sprites.set(shield_frame, frame_sprite)
+  
+  return (bar_bg, bar_fg, shield_frame)
 }
 ///更新血条UI
 fn update_health_bars_system(_backend: &@system.Backend) -> Unit {
@@ -55,6 +67,7 @@ fn update_health_bars_system(_backend: &@system.Backend) -> Unit {
         let bar_pos = @math.Vec2D(bar_pos_x, bar_pos_y)
         @position.positions.set(health.bar_bg_entity, bar_pos)
         @position.positions.set(health.bar_fg_entity, bar_pos)
+        @position.positions.set(health.shield_frame_entity, bar_pos) 
 
         //更新前景条宽度
         let health_percentage = health.current / health.max
@@ -79,7 +92,7 @@ fn update_health_bars_system(_backend: &@system.Backend) -> Unit {
             _ => ()
           }
         }
-      if @sprite.sprites.get(health.bar_bg_entity) is Some(bg_sprite) {
+        if @sprite.sprites.get(health.bar_bg_entity) is Some(bg_sprite) {
          match bg_sprite.sprite_type {
           ColorRect(rect) => {
             let new_size = @math.Vec2D(bar_width, HEALTH_BAR_HEIGHT)
@@ -88,7 +101,29 @@ fn update_health_bars_system(_backend: &@system.Backend) -> Unit {
             @sprite.sprites.set(health.bar_bg_entity, new_sprite)
           }
           _ => ()
+          }
         }
+        if @sprite.sprites.get(health.shield_frame_entity) is Some(frame_sprite) {
+          let is_player = teams.get(unit) == Some(Team::Player)
+          let is_shield_active = team_charge_shield.val is Some(s) && s.charges > 0
+
+          frame_sprite.visible = is_player && is_shield_active
+          
+          match frame_sprite.sprite_type {
+            ColorRect(rect) => {
+              let new_width = bar_width
+              let new_height = HEALTH_BAR_HEIGHT + 3.0
+              if rect.size[X] != new_width || rect.size[Y] != new_height {
+                let new_size = @math.Vec2D(new_width, new_height)
+                let new_rect = { ..rect, size: new_size }
+                let new_sprite = @sprite.Sprite::from_color_rect(new_rect, frame_sprite.zindex, offset=@math.Vec2D(0, -3), layer=frame_sprite.layer)
+                
+                new_sprite.visible = frame_sprite.visible
+                @sprite.sprites.set(health.shield_frame_entity, new_sprite)
+              }
+            }
+            _ => ()
+          }
         }
       }
     }
@@ -139,4 +174,65 @@ fn update_orientation_indicators_system(_backend: &@system.Backend) -> Unit {
       indicator_sprite.transform = unit_sprite.transform
     }
   })
+}
+
+
+// ---------------------------------
+//  次数盾剩余次数
+// ---------------------------------
+
+let team_shield_display_entity: Ref[Option[@system.Entity]] = Ref::new(None)
+
+pub fn update_shield_display_system(_backend: &@system.Backend) -> Unit {
+  if team_charge_shield.val is Some(shield) && shield.charges > 0 {
+    let display_text = "x\{shield.charges}"
+
+    if team_shield_display_entity.val is Some(entity) {
+      if @sprite.sprites.get(entity) is Some(old_sprite) {
+        if old_sprite.sprite_type is @sprite.SpriteType::TextLayout(old_layout) {
+          if old_layout.content != display_text {
+            
+            let new_layout = @system.TextLayout::new(
+              display_text, // 新的 content
+              font=old_layout.font,
+              color=old_layout.color,
+              max_width=old_layout.max_width,
+              align=old_layout.align,
+              line_height=old_layout.line_height
+            )
+            
+            let new_sprite = @sprite.Sprite::from_text_layout(new_layout, old_sprite.zindex, layer=old_sprite.layer)
+            @sprite.sprites.set(entity, new_sprite)
+          }
+        }
+      }
+      if player_head.val is Some(head) {
+        if @position.positions.get(head) is Some(head_pos) {
+          let new_pos = head_pos.0 + @math.Vec2D(-10.0, -10.0)
+          @position.positions.set(entity, new_pos)
+        }
+      }
+    } else {
+      println("【UI】: 首次获得护盾，创建显示UI...")
+      let new_entity = @system.Entity::new()
+      
+      let layout = @system.TextLayout::new(
+        display_text,
+        font="bold 24px mplus_hzk",
+        color="#00FFFF"
+      )
+      let sprite = @sprite.Sprite::from_text_layout(layout, 200, layer=@sprite.RenderLayer::ui())
+      @sprite.sprites.set(new_entity, sprite)
+      
+      team_shield_display_entity.val = Some(new_entity)
+    }
+
+  } else {
+    if team_shield_display_entity.val is Some(entity) {
+      println("【UI】: 护盾消失，销毁显示UI...")
+      @sprite.sprites.remove(entity)
+      @system.Entity::destroy(entity)
+      team_shield_display_entity.val = None
+    }
+  }
 }

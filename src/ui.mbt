@@ -171,7 +171,15 @@ fn cleanup_game_world() -> Unit {
           @system.Entity::destroy(vfx_entity)
         }
       }
-  
+      println("【清理】: 正在清理所有拾取物...")
+      for pickup_entity in pickups.keys() {
+        if pickup_entity.is_alive() {
+          // 销毁拾取物的 Sprite
+          let _ = @sprite.sprites.remove(pickup_entity)
+          // 销毁拾取物的实体
+          @system.Entity::destroy(pickup_entity)
+        }
+      }
       @system.Entity::destroy(unit)
     }
   }
@@ -180,8 +188,24 @@ fn cleanup_game_world() -> Unit {
   all_units.val.clear()
   projectiles.clear()
   vfx_instances.clear()
+  healths.clear()
+  combat_stats.clear()
+  teams.clear()
+  destinations.clear()
+  attack_targets.clear()
+  @position.positions.clear()
+  @velocity.velocities.clear()
+  score_values.clear()
+  movement_stats.clear()
+  sizes.clear()
+  train_cars.clear()
+  team_abilities.clear()
+  cooldown_ability_units.clear()
+  vfx_follows.clear()
+  pickups.clear() 
   // ... 清理其他任何可能残留实体的列表
   
+  add_map()
   println("【清理】: 游戏世界彻底清理完毕。")
 }
 

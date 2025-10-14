@@ -59,8 +59,8 @@ fn add_new_orange_square(pos: @math.Vec2D) -> @system.Entity {
 
   let new_unit = spawn_base_player_unit(pos, UnitShape::Square, SynergyTag::Orange)
 
-  let (bar_bg, bar_fg) = attach_health_bar()
-  healths.set(new_unit, { current: 10.0, max: 10.0, bar_bg_entity: bar_bg, bar_fg_entity: bar_fg })
+  let (bar_bg, bar_fg, shield_frame) = attach_health_bar()
+  healths.set(new_unit, { current: 10.0, max: 10.0, bar_bg_entity: bar_bg, bar_fg_entity: bar_fg, shield_frame_entity: shield_frame  })
 
   combat_stats.set(new_unit, {
     attack_range: 150.0, 
@@ -88,8 +88,8 @@ fn add_new_orange_triangle(pos: @math.Vec2D) -> @system.Entity {
   
   let new_unit = spawn_base_player_unit(pos, UnitShape::Triangle, SynergyTag::Orange)
 
-  let (bar_bg, bar_fg) = attach_health_bar()
-  healths.set(new_unit, { current: 6.0, max: 6.0, bar_bg_entity: bar_bg, bar_fg_entity: bar_fg })
+  let (bar_bg, bar_fg, shield_frame) = attach_health_bar()
+  healths.set(new_unit, { current: 6.0, max: 6.0, bar_bg_entity: bar_bg, bar_fg_entity: bar_fg, shield_frame_entity: shield_frame  })
 
   // GDD: 每1秒发射子弹, 4点直伤, 2点溅射(半径100)
   combat_stats.set(new_unit, {
@@ -125,26 +125,17 @@ fn add_new_orange_circle(pos: @math.Vec2D) -> @system.Entity {
   
   let new_unit = spawn_base_player_unit(pos, UnitShape::Circle, SynergyTag::Orange)
 
-  let (bar_bg, bar_fg) = attach_health_bar()
-  healths.set(new_unit, { current: 10.0, max: 10.0, bar_bg_entity: bar_bg, bar_fg_entity: bar_fg })
+  let (bar_bg, bar_fg, shield_frame) = attach_health_bar()
+  healths.set(new_unit, { current: 10.0, max: 10.0, bar_bg_entity: bar_bg, bar_fg_entity: bar_fg, shield_frame_entity: shield_frame  })
 
   // GDD: 每5秒在地图上生成一个可拾取的抵挡2次伤害的次数盾
-  // 现在还没做次数盾系统，就先和三角形一个模板占位 TODO
   combat_stats.set(new_unit, {
-    attack_range: 300.0, 
+    attack_range: 0.0, 
     attack_type: AttackType::Bullet,
-    aoe_radius: 4.0,
+    aoe_radius: 0.0,
     on_hit_effects: [
-        OnHitEffect::DealDamage(3.0, Some(VFX_Type::BulletImpact)), 
-
-        OnHitEffect::AreaOfEffect(
-          [OnHitEffect::DealDamage(1.0, None)],
-          100.0, 
-          None,
-        ),
-        OnHitEffect::Knockback(15)
     ],
-    attack_cooldown: 1.0,
+    attack_cooldown: 999.0,
     
     current_cooldown: 0.0,
     aggro_range: 350.0, 
@@ -154,7 +145,21 @@ fn add_new_orange_circle(pos: @math.Vec2D) -> @system.Entity {
     attack_sfx: Some(PlayerShoot), 
     bullet_color: Some(gdd_color_palette.get(Orange).unwrap_or("#FFFFFF"))
   })
-
+  team_abilities.set(new_unit, {
+    effects: [
+      OnHitEffect::SpawnPickup(
+        PickupType::ChargeShield,       // 生成次数盾
+        PickupData::ShieldData(2)       // 这个盾包含2次抵挡次数
+      )
+    ],
+    cooldown: 5.0, // 根据GDD，每5秒触发一次
+    current_cooldown: 10.0,
+    // 目标规则设为 Self_ 是最合适的，因为它不需要对任何单位生效，
+    // 只是一个触发器
+    targeting_rule: TargetingRule::Self_,
+    cast_vfx: None, // 可以在这里加上一个施法光环
+    cast_sfx: None,
+  })
   all_units.val.push(new_unit)
   return new_unit
 }
@@ -162,8 +167,8 @@ fn add_new_purple_square(pos: @math.Vec2D) -> @system.Entity {
   
   let new_unit = spawn_base_player_unit(pos, UnitShape::Square, SynergyTag::Purple)
 
-  let (bar_bg, bar_fg) = attach_health_bar()
-  healths.set(new_unit, { current: 9.0, max: 9.0, bar_bg_entity: bar_bg, bar_fg_entity: bar_fg })
+  let (bar_bg, bar_fg, shield_frame) = attach_health_bar()
+  healths.set(new_unit, { current: 9.0, max: 9.0, bar_bg_entity: bar_bg, bar_fg_entity: bar_fg, shield_frame_entity: shield_frame  })
 
   // GDD: HP 8, 每5秒以自身为圆心，对半径5范围内发射60度扇形范围伤害。
   // 现在还没做扇形范围伤害系统，就先和三角形一个模板占位 TODO
@@ -200,8 +205,8 @@ fn add_new_purple_triangle(pos: @math.Vec2D) -> @system.Entity {
   
   let new_unit = spawn_base_player_unit(pos, UnitShape::Triangle, SynergyTag::Purple)
 
-  let (bar_bg, bar_fg) = attach_health_bar()
-  healths.set(new_unit, { current: 7.0, max: 7.0, bar_bg_entity: bar_bg, bar_fg_entity: bar_fg })
+  let (bar_bg, bar_fg, shield_frame) = attach_health_bar()
+  healths.set(new_unit, { current: 7.0, max: 7.0, bar_bg_entity: bar_bg, bar_fg_entity: bar_fg, shield_frame_entity: shield_frame })
 
   // GDD: 每3秒对3个敌人发射激光射线，造成4点伤害并附加1.0秒静止效果
   combat_stats.set(new_unit, {
@@ -237,8 +242,8 @@ fn add_new_purple_circle(pos: @math.Vec2D) -> @system.Entity {
   
   let new_unit = spawn_base_player_unit(pos, UnitShape::Circle, SynergyTag::Purple)
 
-  let (bar_bg, bar_fg) = attach_health_bar()
-  healths.set(new_unit, { current: 7, max: 7, bar_bg_entity: bar_bg, bar_fg_entity: bar_fg })
+  let (bar_bg, bar_fg, shield_frame) = attach_health_bar()
+  healths.set(new_unit, { current: 7, max: 7, bar_bg_entity: bar_bg, bar_fg_entity: bar_fg, shield_frame_entity: shield_frame })
 
   // GDD: HP 9, 每15秒为队列添加1次持续8秒的buff，使成员技能冷却（CD）计数加快1.5倍。
   combat_stats.set(new_unit, {
@@ -290,8 +295,8 @@ fn add_new_green_square(pos: @math.Vec2D) -> @system.Entity {
   
   let new_unit = spawn_base_player_unit(pos, UnitShape::Square, SynergyTag::Green)
 
-  let (bar_bg, bar_fg) = attach_health_bar()
-  healths.set(new_unit, { current: 9.0, max: 9.0, bar_bg_entity: bar_bg, bar_fg_entity: bar_fg })
+  let (bar_bg, bar_fg, shield_frame) = attach_health_bar()
+  healths.set(new_unit, { current: 9.0, max: 9.0, bar_bg_entity: bar_bg, bar_fg_entity: bar_fg, shield_frame_entity: shield_frame })
 
   // GDD: HP 8, 持续以自身为中心，在半径8范围内释放毒气，每1秒造成1点伤害。
   combat_stats.set(new_unit, {
@@ -326,8 +331,8 @@ fn add_new_green_triangle(pos: @math.Vec2D) -> @system.Entity {
   
   let new_unit = spawn_base_player_unit(pos, UnitShape::Triangle, SynergyTag::Green)
 
-  let (bar_bg, bar_fg) = attach_health_bar()
-  healths.set(new_unit, { current: 6, max: 6, bar_bg_entity: bar_bg, bar_fg_entity: bar_fg })
+  let (bar_bg, bar_fg, shield_frame) = attach_health_bar()
+  healths.set(new_unit, { current: 6, max: 6, bar_bg_entity: bar_bg, bar_fg_entity: bar_fg, shield_frame_entity: shield_frame })
 
   // GDD:  每6秒投射1枚毒气弹，直接命中敌人造成2点伤害，并留下半径4的毒气区域（每1秒1伤害）
   combat_stats.set(new_unit, {
@@ -363,8 +368,8 @@ fn add_new_green_circle(pos: @math.Vec2D) -> @system.Entity {
   
   let new_unit = spawn_base_player_unit(pos, UnitShape::Circle, SynergyTag::Green)
 
-  let (bar_bg, bar_fg) = attach_health_bar()
-  healths.set(new_unit, { current: 6, max: 6, bar_bg_entity: bar_bg, bar_fg_entity: bar_fg })
+  let (bar_bg, bar_fg, shield_frame) = attach_health_bar()
+  healths.set(new_unit, { current: 6, max: 6, bar_bg_entity: bar_bg, bar_fg_entity: bar_fg, shield_frame_entity: shield_frame })
 
   // GDD: HP 5, 在场时，队列每造成5点总伤害，为血量最低的队员恢复1HP
   combat_stats.set(new_unit, {
@@ -409,8 +414,8 @@ fn add_new_blue_square(pos: @math.Vec2D) -> @system.Entity {
   
   let new_unit = spawn_base_player_unit(pos, UnitShape::Square, SynergyTag::Blue)
 
-  let (bar_bg, bar_fg) = attach_health_bar()
-  healths.set(new_unit, { current: 10.0, max: 10.0, bar_bg_entity: bar_bg, bar_fg_entity: bar_fg })
+  let (bar_bg, bar_fg, shield_frame) = attach_health_bar()
+  healths.set(new_unit, { current: 10.0, max: 10.0, bar_bg_entity: bar_bg, bar_fg_entity: bar_fg, shield_frame_entity: shield_frame })
 
   // GDD: 每 5 秒以自身为圆心，对一定半径范围的敌人施加持续5秒的每秒 2 点伤害的持续伤害
   // 现在还没做对具体半径群攻的系统，就先用aoe模版 TODO
@@ -438,8 +443,8 @@ fn add_new_blue_triangle(pos: @math.Vec2D) -> @system.Entity {
   
   let new_unit = spawn_base_player_unit(pos, UnitShape::Triangle, SynergyTag::Blue)
 
-  let (bar_bg, bar_fg) = attach_health_bar()
-  healths.set(new_unit, { current: 7, max: 7, bar_bg_entity: bar_bg, bar_fg_entity: bar_fg })
+  let (bar_bg, bar_fg, shield_frame) = attach_health_bar()
+  healths.set(new_unit, { current: 7, max: 7, bar_bg_entity: bar_bg, bar_fg_entity: bar_fg, shield_frame_entity: shield_frame })
 
   // GDD: 每3秒发射1条闪电链，首次命中敌人造成4点伤害，分裂至其他敌人（每条分裂伤害减半），每条分裂2条。
   combat_stats.set(new_unit, {
@@ -475,8 +480,8 @@ fn add_new_blue_circle(pos: @math.Vec2D) -> @system.Entity {
   
   let new_unit = spawn_base_player_unit(pos, UnitShape::Circle, SynergyTag::Blue)
 
-  let (bar_bg, bar_fg) = attach_health_bar()
-  healths.set(new_unit, { current: 6, max: 6, bar_bg_entity: bar_bg, bar_fg_entity: bar_fg })
+  let (bar_bg, bar_fg, shield_frame) = attach_health_bar()
+  healths.set(new_unit, { current: 6, max: 6, bar_bg_entity: bar_bg, bar_fg_entity: bar_fg, shield_frame_entity: shield_frame })
 
   // GDD: HP 9, 每8秒为队列附加1次持续4秒的buff，使所有成员造成的每次伤害额外增加1点。
   // 现在还没做对队施加增益的系统，就先和三角形一个模板占位 TODO

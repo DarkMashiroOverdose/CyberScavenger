@@ -32,8 +32,8 @@ fn add_new_grunt(pos: @math.Vec2D) -> Unit {
   let sprite = @sprite.Sprite::from_shape(shape, 100, offset=@math.Vec2D(-10.0, -15.0))
   @sprite.sprites.set(new_unit, sprite)
 
-  let (bar_bg, bar_fg) = attach_health_bar()
-  healths.set(new_unit, { current: 8.0, max: 8.0, bar_bg_entity: bar_bg, bar_fg_entity: bar_fg })
+  let (bar_bg, bar_fg, shield_frame) = attach_health_bar()
+  healths.set(new_unit, { current: 8.0, max: 8.0, bar_bg_entity: bar_bg, bar_fg_entity: bar_fg, shield_frame_entity: shield_frame })
   teams.set(new_unit, Team::Enemy)
 
   score_values.set(new_unit, { value: 10 })
@@ -66,8 +66,8 @@ fn add_new_tank_enemy(pos: @math.Vec2D) -> Unit {
   let sprite = @sprite.Sprite::from_shape(shape, 100)
   @sprite.sprites.set(new_unit, sprite)
 
-  let (bar_bg, bar_fg) = attach_health_bar()
-  healths.set(new_unit, { current: 30.0, max: 30.0, bar_bg_entity: bar_bg, bar_fg_entity: bar_fg })
+  let (bar_bg, bar_fg, shield_frame) = attach_health_bar()
+  healths.set(new_unit, { current: 30.0, max: 30.0, bar_bg_entity: bar_bg, bar_fg_entity: bar_fg, shield_frame_entity: shield_frame })
   teams.set(new_unit, Team::Enemy)
 
   score_values.set(new_unit, { value: 50 })
@@ -100,8 +100,8 @@ fn add_new_archer(pos: @math.Vec2D) -> Unit {
   let sprite = @sprite.Sprite::from_shape(shape, 100, offset=@math.Vec2D(-15.0, -15.0))
   @sprite.sprites.set(new_unit, sprite)
 
-  let (bar_bg, bar_fg) = attach_health_bar()
-  healths.set(new_unit, { current: 8.0, max: 8.0, bar_bg_entity: bar_bg, bar_fg_entity: bar_fg }) 
+  let (bar_bg, bar_fg, shield_frame) = attach_health_bar()
+  healths.set(new_unit, { current: 8.0, max: 8.0, bar_bg_entity: bar_bg, bar_fg_entity: bar_fg, shield_frame_entity: shield_frame }) 
   teams.set(new_unit, Team::Enemy)
 
   score_values.set(new_unit, { value: 20 })
@@ -133,8 +133,8 @@ fn add_new_bomber(pos: @math.Vec2D) -> Unit {
   let sprite = @sprite.Sprite::from_shape(shape, 100, offset=@math.Vec2D(-15.0, -15.0))
   @sprite.sprites.set(new_unit, sprite)
 
-  let (bar_bg, bar_fg) = attach_health_bar()
-  healths.set(new_unit, { current: 80.0, max: 80.0, bar_bg_entity: bar_bg, bar_fg_entity: bar_fg })
+  let (bar_bg, bar_fg, shield_frame) = attach_health_bar()
+  healths.set(new_unit, { current: 80.0, max: 80.0, bar_bg_entity: bar_bg, bar_fg_entity: bar_fg, shield_frame_entity: shield_frame })
   teams.set(new_unit, Team::Enemy)
 
   score_values.set(new_unit, { value: 20 })

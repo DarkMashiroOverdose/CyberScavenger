@@ -75,6 +75,10 @@ pub enum OnHitEffect {
     Double,                    // 在多大范围内寻找
     Option[VFX_Type]        // 从【攻击者】到【额外目标】的光束特效
   )
+
+  GainChargeShield(Int) // 获得一个有 N 次抵挡次数的护盾
+
+  SpawnPickup(PickupType, PickupData)// 生成可拾取物
 }
 fn combat_system(backend: &@system.Backend) -> Unit {
   let delta_seconds = 1.0 / 60.0
@@ -393,6 +397,31 @@ fn apply_all_effects(source: @system.Entity, target: @system.Entity, effects: Ar
           beam_vfx,
         )
       }
+      GainChargeShield(charges_to_add) => {
+        if team_charge_shield.val is Some(shield) {
+          // 如果已有护盾，则增加次数
+          shield.charges += charges_to_add
+        } else {
+          // 如果没有，则创建一个新的
+          team_charge_shield.val = Some(ChargeShield::{ charges: charges_to_add })
+        }
+        println("【护盾】: 获得了 \{charges_to_add} 次护盾，当前总次数: \{team_charge_shield.val.unwrap().charges}")
+      }
+
+       SpawnPickup(pickup_type, data) => {
+        // 获取一个随机的地图位置
+        let spawn_pos = get_random_map_position() // 我们需要创建这个辅助函数
+
+        // 创建一个拾取物生成请求
+        pickup_requests.val.push({
+          pickup_type,
+          position: spawn_pos,
+          data,
+        })
+        
+        println("【技能效果】: 已请求在 \{spawn_pos} 生成一个 \{pickup_type}。")
+      }
+
       // ... 未来在这里扩展 ...
     }
   }
@@ -424,6 +453,27 @@ fn apply_effects_in_area(
 
 ///计算最终伤害(涉及暴击)
 fn apply_damage(attacker: @system.Entity, target: @system.Entity, base_damage: Double) -> Unit {
+  
+  //如果是玩家则触发次数盾计算机制
+  if teams.get(target) == Some(Team::Player) {
+    if team_charge_shield.val is Some(shield) && shield.charges > 0 {
+      // 护盾存在且有次数
+      shield.charges -= 1
+      println("【护盾】: 抵挡了一次伤害，剩余次数: \{shield.charges}")
+
+      // TODO: 在这里可以触发一个护盾抵挡的音效和视觉特效
+      // sfx_requests.val.push(...)
+      // vfx_requests.val.push(...)
+
+      if shield.charges <= 0 {
+        // 如果次数用完了，就移除护盾
+        team_charge_shield.val = None
+        println("【护盾】: 护盾已破碎！")
+      }
+      return //跳过伤害计算
+    }
+  }
+
   if healths.get(target) is Some(health) {
     let mut final_damage = base_damage
     if combat_stats.get(attacker) is Some(stats) {

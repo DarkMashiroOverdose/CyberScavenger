@@ -78,6 +78,12 @@ pub fn update_game_world_system(backend: &@system.Backend) -> Unit {
   aggro_system(backend)
   // 战斗结算，根据攻击目标和冷却，触发攻击效果
   combat_system(backend)
+  // 拾取系统
+  pickup_system(backend)
+  // 生成拾取物系统
+  pickup_spawner_system(backend)
+  // 拾取物生命周期
+  pickup_lifecycle_system(backend)
   // 处理团队技能的触发和效果应用
   team_ability_system(backend)  
   // 更新所有飞行中的抛射物（子弹）的位置和方向
@@ -106,7 +112,9 @@ pub fn update_game_world_system(backend: &@system.Backend) -> Unit {
   path_history_system(backend)
   // 让车厢根据轨迹点进行跟随
   train_snake_follow_system(backend)
-  
+  // 次数盾可视化
+  update_shield_display_system(backend)
+  // 分数可视化
   update_score_display_system(backend)
   // 移除所有被标记为“死亡”的实体和它们的组件
   cleanup_system(backend)
@@ -120,6 +128,7 @@ fn init_game(backend: &@system.Backend) -> Unit {
   add_map()
   setup_vfx_library()
   setup_sfx_library()
+  setup_pickup_library()
 
 
   spawn_timer.val = INITIAL_SPAWN_INTERVAL

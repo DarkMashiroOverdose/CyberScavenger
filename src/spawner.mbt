@@ -86,3 +86,13 @@ fn heal_all_player_units() -> Unit {
     }
   }
 }
+
+pub fn get_random_map_position() -> @math.Vec2D {
+  // 增加一点内边距，避免生成在最边缘
+  let padding = 50.0 
+  
+  let x = global_rng.double() * (MAP_WIDTH - padding * 2.0) + padding
+  let y = global_rng.double() * (MAP_HEIGHT - padding * 2.0) + padding
+
+  return @math.Vec2D(x, y)
+}

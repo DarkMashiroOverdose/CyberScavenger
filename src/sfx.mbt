@@ -12,6 +12,7 @@ pub enum SFX_Type {
   UITick
   Dead
   Select
+  PowerUp
 } derive(Eq, Show, Hash)
 
 /// 定义一个音效的静态属性
@@ -47,6 +48,10 @@ pub fn setup_sfx_library() -> Unit {
 
   sfx_library.set(SFX_Type::Dead, {
     path: "assets/sfx/Dead.wav",
+    default_volume: 0.8,
+  })
+  sfx_library.set(SFX_Type::PowerUp, {
+    path: "assets/sfx/PowerUp.wav",
     default_volume: 0.8,
   })
   // ... 在这里注册所有其他的音效 ...
