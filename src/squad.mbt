@@ -33,14 +33,14 @@ pub struct UnitDefinition {
 // 修正 #2: 将变量名改为小写的 snake_case
 pub let unit_definitions: Map[UnitType, UnitDefinition] = {
   let db = Map::new()
-  db.set(UnitType::OrangeSquare,   { name: "橙色方块", color_tag: SynergyTag::Orange, shape_tag: UnitShape::Square,   hp:10,  atk:5,
-    gdd: "每 5 秒以自身为圆心，对一定半径范围的敌人内造成 10 点伤害"})
+  db.set(UnitType::OrangeSquare,   { name: "橙色方块", color_tag: SynergyTag::Orange, shape_tag: UnitShape::Square,   hp:10,  atk:10,
+    gdd: "每 2 秒以自身为圆心，对一定半径范围的敌人内造成 10 点伤害"})
   db.set(UnitType::OrangeTriangle, { name: "橙色三角", color_tag: SynergyTag::Orange, shape_tag: UnitShape::Triangle, hp:6,   atk:4,
     gdd: "每 1 秒发射 1 颗子弹攻击敌人， 造成 4 点直接伤害+半径2的溅射伤害"})
   db.set(UnitType::OrangeCircle,   { name: "橙色圆形", color_tag: SynergyTag::Orange, shape_tag: UnitShape::Circle,   hp:10,  atk:0,
     gdd: "每 5 秒在地图上生成一个可拾取的抵挡 2 次伤害的次数盾\n地上的次数盾会在10秒后消失"})
-  db.set(UnitType::PurpleSquare,   { name: "紫色方块", color_tag: SynergyTag::Purple, shape_tag: UnitShape::Square,   hp:9,   atk:6,
-    gdd: "每 5 秒以自身为圆心，对一定距离内一个60度扇形范围内的敌人造成8伤害\n！！未完成内容！！"})
+  db.set(UnitType::PurpleSquare,   { name: "紫色方块", color_tag: SynergyTag::Purple, shape_tag: UnitShape::Square,   hp:9,   atk:4,
+    gdd: "每 2 秒以自身为圆心，对一定半径范围的敌人内造成 4 点伤害，在推开敌人的同时附加迟滞效果"})
   db.set(UnitType::PurpleTriangle, { name: "紫色三角", color_tag: SynergyTag::Purple, shape_tag: UnitShape::Triangle, hp:7,   atk:4,
     gdd: "每 1 秒对一定范围内 3 个敌人发射射线，造成 4 点伤害并附加1秒静止效果"})
   db.set(UnitType::PurpleCircle,   { name: "紫色圆形", color_tag: SynergyTag::Purple, shape_tag: UnitShape::Circle,   hp:7,   atk:1,

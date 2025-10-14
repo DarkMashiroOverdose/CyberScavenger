@@ -63,7 +63,7 @@ fn add_new_orange_square(pos: @math.Vec2D) -> @system.Entity {
   healths.set(new_unit, { current: 10.0, max: 10.0, bar_bg_entity: bar_bg, bar_fg_entity: bar_fg, shield_frame_entity: shield_frame  })
 
   combat_stats.set(new_unit, {
-    attack_range: 150.0, 
+    attack_range: 120.0, 
     attack_type: AttackType::AoE, 
     aoe_radius: 150.0,
     on_hit_effects: [OnHitEffect::DealDamage(10.0,None),OnHitEffect::Knockback(15)], 
@@ -152,12 +152,10 @@ fn add_new_orange_circle(pos: @math.Vec2D) -> @system.Entity {
         PickupData::ShieldData(2)       // 这个盾包含2次抵挡次数
       )
     ],
-    cooldown: 5.0, // 根据GDD，每5秒触发一次
+    cooldown: 5.0, 
     current_cooldown: 10.0,
-    // 目标规则设为 Self_ 是最合适的，因为它不需要对任何单位生效，
-    // 只是一个触发器
     targeting_rule: TargetingRule::Self_,
-    cast_vfx: None, // 可以在这里加上一个施法光环
+    cast_vfx: None, 
     cast_sfx: None,
   })
   all_units.val.push(new_unit)
@@ -170,28 +168,18 @@ fn add_new_purple_square(pos: @math.Vec2D) -> @system.Entity {
   let (bar_bg, bar_fg, shield_frame) = attach_health_bar()
   healths.set(new_unit, { current: 9.0, max: 9.0, bar_bg_entity: bar_bg, bar_fg_entity: bar_fg, shield_frame_entity: shield_frame  })
 
-  // GDD: HP 8, 每5秒以自身为圆心，对半径5范围内发射60度扇形范围伤害。
-  // 现在还没做扇形范围伤害系统，就先和三角形一个模板占位 TODO
+  // GDD: HP 8, 每 2 秒以自身为圆心，对一定半径范围的敌人内造成 6 点伤害，在推开敌人的同时附加迟滞效果
   combat_stats.set(new_unit, {
-    attack_range: 300.0, 
-    attack_type: AttackType::Bullet,
-    aoe_radius: 4.0,
-    on_hit_effects: [
-        OnHitEffect::DealDamage(3.0, Some(VFX_Type::BulletImpact)), 
-
-        OnHitEffect::AreaOfEffect(
-          [OnHitEffect::DealDamage(1.0, None)],
-          100.0, 
-          None,
-        ),
-        OnHitEffect::Knockback(15)
-    ],
+    attack_range: 130.0, 
+    attack_type: AttackType::AoE,
+    aoe_radius: 180.0,
+    on_hit_effects: [OnHitEffect::DealDamage(4.0,None),OnHitEffect::Knockback(100),OnHitEffect::ApplyBuff(BuffType::MultiplySpeed(0.2), 3.0, Some(SpeedLow))],
     attack_cooldown: 1.0,
     
     current_cooldown: 0.0,
     aggro_range: 350.0, 
     crit_rate: 0.05, 
-    attack_cast_vfx: None,    
+    attack_cast_vfx: Some(AoEMeelePurple),   
     area_effect_vfx: None,
     attack_sfx: Some(PlayerShoot), 
     bullet_color: Some(gdd_color_palette.get(Purple).unwrap_or("#FFFFFF"))

@@ -11,6 +11,7 @@ pub enum VFX_Type {
   SpeedLow
   AoEMeeleRed
   AoEMeeleOrange
+  AoEMeelePurple
   Healing
   CooldownUp
   PrimaryBeam
@@ -146,8 +147,26 @@ fn setup_vfx_library() -> Unit {
   })
   vfx_library.set(VFX_Type::AoEMeeleOrange, {
     sprite_template: SpriteTemplate::Shape(
-        @sprite.Shape::circle(100.0), 
+        @sprite.Shape::circle(120.0), 
         @sprite.DrawStyle::stroke("rgba(255, 137, 2, 0.66)",5.0)),
+    behavior: {
+      // 【核心】指定生命周期模式
+      lifecycle: VFX_Lifecycle::Timer(0.5),
+      dynamic_transform: Some({
+        is_pulsing_scale: true,
+        rotation_speed: 0.5,
+        scale_speed: 10.0,
+        scale_amplitude: 0.1,
+        _current_angle: 0.0,
+        _time_elapsed: 0.0,
+      }),
+    },
+    z_index: 50,
+  })
+  vfx_library.set(VFX_Type::AoEMeelePurple, {
+    sprite_template: SpriteTemplate::Shape(
+        @sprite.Shape::circle(160.0), 
+        @sprite.DrawStyle::stroke("#DDA0DD",4.0)),
     behavior: {
       // 【核心】指定生命周期模式
       lifecycle: VFX_Lifecycle::Timer(0.5),
