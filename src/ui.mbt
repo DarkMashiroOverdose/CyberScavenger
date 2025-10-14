@@ -433,9 +433,9 @@ fn setup_ingame_hud() -> Unit {
 
   ui_entities.val.push(tutorial_label)
   tutorial_text_entity.val = Some(tutorial_label)
-
-  if current_control_scheme.val == ControlScheme::Joystick {
-    setup_joystick_ui()
+  
+  if current_control_scheme.val == ControlScheme::Joystick {  
+    create_tutorial_joystick_visuals()
   }
 }
 pub fn update_wave_display_system(_backend: &@system.Backend) -> Unit {
@@ -1199,14 +1199,20 @@ pub fn update_ui_system(_backend: &@system.Backend) -> Unit {
     update_control_scheme_display()
   }
 }
+
+enum ClickEvent {
+  MouseClick(@math.Vec2D) // 鼠标点击，包含坐标
+  TouchClick(@math.Vec2D) // 触摸点击，包含坐标
+}
 pub fn button_system(backend: &@system.Backend) -> Unit {
-  let mut click_pos_opt: Option[@math.Vec2D] = None
+  
+  let mut click_event_opt: Option[ClickEvent] = None
   if @system.is_mouse_just_pressed(@system.MouseButton::Left) {
-    click_pos_opt = Some(@system.mouse.pos)
+    click_event_opt = Some(ClickEvent::MouseClick(@system.mouse.pos))
   } else if !@system.just_began_touches.is_empty() {
     let touches_array = @system.just_began_touches.values().to_array()
     if touches_array.length() > 0 {
-      click_pos_opt = Some(touches_array[0].pos)
+      click_event_opt = Some(ClickEvent::TouchClick(touches_array[0].pos))
     }
   }
 
@@ -1283,7 +1289,11 @@ pub fn button_system(backend: &@system.Backend) -> Unit {
       }
     }
 
-    if click_pos_opt is Some(click_pos) {
+    if click_event_opt is Some(click_event) {
+      let click_pos = match click_event {
+        MouseClick(pos) => pos
+        TouchClick(pos) => pos
+      }
       if is_point_inside_centered_rect(click_pos, button.area) {
         sfx_requests.val.push({ sfx_type: SFX_Type::Select, position: None })
         
@@ -1317,6 +1327,10 @@ pub fn button_system(backend: &@system.Backend) -> Unit {
           return
         }
         ButtonAction::UnlockAudio => {
+            if click_event is TouchClick(_) {
+              println("【智能切换】: 检测到首次交互为触摸，自动切换到摇杆模式。")
+              current_control_scheme.val = ControlScheme::Joystick
+            }
           if !audio_unlocked.val {
             println("【音频】: 首次交互，解锁并播放BGM...")
             audio_unlocked.val = true
