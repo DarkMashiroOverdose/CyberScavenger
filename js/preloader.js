@@ -2,6 +2,8 @@ const ASSET_PATHS = [
   "assets/gfx/background_tile.png",
   "assets/gfx/explosion150xA.png",
 
+  "assets/gfx/pickups/ChargeShield.png",
+
   "assets/gui/guide/squad_guide_01.png",
   "assets/gui/guide/squad_guide_02.png",
   "assets/gui/guide/squad_guide_03.png",

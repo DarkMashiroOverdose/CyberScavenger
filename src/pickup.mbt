@@ -96,6 +96,7 @@ pub struct PickupTemplate {
   pickup_vfx: Option[VFX_Type]
   radius: Double
   duration: Double 
+  dynamic_transform: Option[DynamicTransform]
 }
 
 // 创建全局的拾取物模板库
@@ -105,14 +106,22 @@ pub let pickup_library: Map[PickupType, PickupTemplate] = Map::new()
 pub fn setup_pickup_library() -> Unit {
   // 定义次数盾拾取物的外观和音效
   pickup_library.set(PickupType::ChargeShield, {
-    sprite_template: SpriteTemplate::Shape(
-      @sprite.Shape::circle(15.0),
-      @sprite.DrawStyle::fill("#00FFFF") // 亮青色
+    sprite_template: SpriteTemplate::Picture(
+      "assets/gfx/pickups/ChargeShield.png", 
+      @math.Vec2D(40.0, 40.0)           
     ),
     pickup_sfx: Some(SFX_Type::PowerUp),
     pickup_vfx: None,
     radius: 15.0,
     duration: 10.0,
+    dynamic_transform: Some({
+      is_pulsing_scale: true,
+      rotation_speed: 0.0,    // 不旋转
+      scale_speed: 3.0,       // 呼吸频率
+      scale_amplitude: 0.1,   // 缩放幅度 (90% to 110%)
+      _current_angle: 0.0,
+      _time_elapsed: 0.0,
+    }),
   })
 
   // 定义血包拾取物的外观和音效
@@ -125,6 +134,14 @@ pub fn setup_pickup_library() -> Unit {
     pickup_vfx: None,
     radius: 20.0,
     duration: 10.0,
+    dynamic_transform: Some({
+      is_pulsing_scale: false, // 不缩放
+      rotation_speed: 1.0,     // 缓慢旋转
+      scale_speed: 0.0,
+      scale_amplitude: 0.0,
+      _current_angle: 0.0,
+      _time_elapsed: 0.0,
+    }),
   })
 }
 // /生成拾取物系统
@@ -155,11 +172,33 @@ pub fn pickup_spawner_system(_backend: &@system.Backend) -> Unit {
         SpriteTemplate::Shape(shape, style) => {
           @sprite.Sprite::from_shape(@sprite.ColoredShape::new(shape, style), 10, layer=@sprite.RenderLayer::game_world())
         }
-        // 在这里可以扩展以支持图片或动画的拾取物
+        SpriteTemplate::Picture(path, size) => {
+          let pic = @sprite.Picture::new(size, path)
+          let offset = @math.Vec2D(-size[X] / 2.0, -size[Y] / 2.0)
+          @sprite.Sprite::from_picture(
+            pic, 
+            10, 
+            offset=offset, // 
+            layer=@sprite.RenderLayer::game_world()
+          )
+        }
+        
+        SpriteTemplate::Animation(anim, _size) => {
+          let frame_size = if anim.frames.length() > 0 { anim.frames[0].size } else { @math.Vec2D::zero() }
+          let offset = @math.Vec2D(-frame_size[X] / 2.0, -frame_size[Y] / 2.0)
+          @sprite.Sprite::from_animation(
+            anim, 
+            10, 
+            offset=offset, // <-- 应用正确的偏移量
+            layer=@sprite.RenderLayer::game_world()
+          )
+        }
         _ => { @sprite.Sprite::from_shape(@sprite.ColoredShape::new(@sprite.Shape::rect(0.0,0.0,0.0),@sprite.DrawStyle::fill("transparent")),0) }
       }
       @sprite.sprites.set(pickup_entity, sprite)
-      
+      if template.dynamic_transform is Some(dt) {
+        dynamic_transforms.set(pickup_entity, dt)
+      }
       pickups.set(pickup_entity, pickup_component)
     }
   }

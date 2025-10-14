@@ -38,7 +38,7 @@ pub let unit_definitions: Map[UnitType, UnitDefinition] = {
   db.set(UnitType::OrangeTriangle, { name: "橙色三角", color_tag: SynergyTag::Orange, shape_tag: UnitShape::Triangle, hp:6,   atk:4,
     gdd: "每 1 秒发射 1 颗子弹攻击敌人， 造成 4 点直接伤害+半径2的溅射伤害"})
   db.set(UnitType::OrangeCircle,   { name: "橙色圆形", color_tag: SynergyTag::Orange, shape_tag: UnitShape::Circle,   hp:10,  atk:0,
-    gdd: "每 5 秒在地图上生成一个可拾取的抵挡 2 次伤害的次数盾\n"})
+    gdd: "每 5 秒在地图上生成一个可拾取的抵挡 2 次伤害的次数盾\n地上的次数盾会在10秒后消失"})
   db.set(UnitType::PurpleSquare,   { name: "紫色方块", color_tag: SynergyTag::Purple, shape_tag: UnitShape::Square,   hp:9,   atk:6,
     gdd: "每 5 秒以自身为圆心，对一定距离内一个60度扇形范围内的敌人造成8伤害\n！！未完成内容！！"})
   db.set(UnitType::PurpleTriangle, { name: "紫色三角", color_tag: SynergyTag::Purple, shape_tag: UnitShape::Triangle, hp:7,   atk:4,
