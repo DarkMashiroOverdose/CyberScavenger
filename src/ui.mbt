@@ -8,7 +8,11 @@ pub enum UIState {
   Settings
   GameOver
 } derive(Eq)
-
+pub enum UICategory {
+  Normal
+  Guide
+}derive(Eq)
+let active_ui_category: Ref[UICategory] = Ref::new(UICategory::Normal)
 let current_ui_state: Ref[UIState] = Ref::new(UIState::MainMenu)
 let prev_ui_state: Ref[UIState] = Ref::new(UIState::MainMenu)
 let ui_entities: Ref[Array[@system.Entity]] = Ref::new([])
@@ -47,6 +51,7 @@ pub struct Button {
   normal_appearance: ButtonAppearance
   hover_appearance: ButtonAppearance
   mut is_hovered: Bool
+  category: UICategory
 }
 pub enum ButtonAppearance {
   FromPicture(String,@math.Vec2D)
@@ -236,6 +241,7 @@ fn setup_main_menu_ui() -> Unit {
       normal_appearance: ButtonAppearance::FromPicture("", @math.Vec2D(0.0, 0.0)),
       hover_appearance: ButtonAppearance::FromPicture("", @math.Vec2D(0.0, 0.0)),
       is_hovered: false,
+      category: UICategory::Normal,
     }
     buttons.set(unlock_button_entity, button_comp)
     ui_entities.val.push(unlock_button_entity)
@@ -287,6 +293,7 @@ fn setup_main_menu_ui() -> Unit {
       @math.Vec2D(220.0, 60.0),
     ),
     is_hovered: false, 
+    category: UICategory::Normal
   }
   buttons.set(start_button_entity, start_button_component)
   ui_entities.val.push(start_button_entity)
@@ -314,6 +321,7 @@ fn setup_main_menu_ui() -> Unit {
     ),
     is_hovered: false, 
     action: ButtonAction::SwitchState(UIState::Settings),
+    category: UICategory::Normal
   }
   buttons.set(archive_button_entity, archive_button_component)
   ui_entities.val.push(archive_button_entity)
@@ -341,6 +349,7 @@ fn setup_main_menu_ui() -> Unit {
     ),
     is_hovered: false, 
     action: ButtonAction::SwitchState(UIState::Settings),
+    category: UICategory::Normal
   }
   buttons.set(settings_button_entity, settings_button_component)
   ui_entities.val.push(settings_button_entity)
@@ -367,6 +376,7 @@ fn setup_main_menu_ui() -> Unit {
     ),
     is_hovered: false, 
     action: ButtonAction::SwitchState(UIState::Settings),
+    category: UICategory::Normal
   }
   buttons.set(about_button_entity, about_button_component)
   ui_entities.val.push(about_button_entity)
@@ -503,6 +513,7 @@ fn setup_settings_ui() -> Unit {
       @system.TextLayout::new(initial_text, font="bold 24px mplus_hzk", color="yellow", align=@system.TextAlign::center())
     ),
     is_hovered: false,
+    category: UICategory::Normal
   }
   buttons.set(button_entity, button_comp)
   ui_entities.val.push(button_entity)
@@ -527,7 +538,8 @@ fn setup_settings_ui() -> Unit {
       back_text
     ),
     is_hovered: false, 
-    action: ButtonAction::SwitchState(UIState::MainMenu)
+    action: ButtonAction::SwitchState(UIState::MainMenu),
+    category: UICategory::Normal
   }
   buttons.set(back_button_entity, back_button_component)
   ui_entities.val.push(back_button_entity)
@@ -617,6 +629,7 @@ fn setup_squad_builder_ui() -> Unit {
       normal_appearance: ButtonAppearance::FromText(confirm_text),
       hover_appearance: ButtonAppearance::FromText(confirm_text_hl),
       is_hovered: false,
+      category: UICategory::Normal
   }
   buttons.set(confirm_entity, confirm_button_comp)
   ui_entities.val.push(confirm_entity)
@@ -628,6 +641,7 @@ fn setup_squad_builder_ui() -> Unit {
 }
 let guide_entities: Ref[Array[@system.Entity]] = Ref::new([])
 fn setup_squad_guide_ui() -> Unit {
+  active_ui_category.val = UICategory::Guide
   let squad_guide_image_paths: Array[String] = [
     "assets/gui/guide/squad_guide_01.png",
     "assets/gui/guide/squad_guide_02.png",
@@ -656,6 +670,7 @@ fn setup_squad_guide_ui() -> Unit {
     normal_appearance: ButtonAppearance::FromPicture("", @math.Vec2D(0.0, 0.0)),
     hover_appearance: ButtonAppearance::FromPicture("", @math.Vec2D(0.0, 0.0)),
     is_hovered: false,
+    category: UICategory::Guide
   }
   buttons.set(guide_button_entity, button_comp)
   guide_entities.val.push(guide_button_entity)
@@ -715,6 +730,7 @@ fn setup_filter_tabs() -> Unit {
         button_size,
       ),
       is_hovered: false,
+    category: UICategory::Normal
     }
     buttons.set(entity, button_comp)
     ui_entities.val.push(entity)
@@ -758,6 +774,7 @@ fn setup_squad_builder_grid_buttons() -> Unit {
       normal_appearance: ButtonAppearance::FromShape(colored_shape,offset),
       hover_appearance: ButtonAppearance::FromShape(colored_shape,offset),
       is_hovered: false,
+      category: UICategory::Normal
     }
     buttons.set(entity, button_comp)
 
@@ -816,6 +833,7 @@ fn setup_game_over_ui() -> Unit {
       @system.TextLayout::new("[ 返回主菜单 ]", font="32px mplus_hzk", color="yellow")
     ),
     is_hovered: false,
+    category: UICategory::Normal
   }
   buttons.set(back_button, button_comp)
   ui_entities.val.push(back_button)
@@ -1026,6 +1044,7 @@ fn setup_squad_display_slots() -> Unit {
       normal_appearance: ButtonAppearance::FromTextLayout(delete_layout),
       hover_appearance: ButtonAppearance::FromTextLayout(delete_layout),
       is_hovered: false,
+      category: UICategory::Normal
     }
     buttons.set(delete_button_entity, delete_button_comp)
     
@@ -1288,6 +1307,9 @@ pub fn button_system(backend: &@system.Backend) -> Unit {
           @sprite.sprites.set(entity, new_sprite)
       }
     }
+    if button.category != active_ui_category.val {
+      continue
+    }
 
     if click_event_opt is Some(click_event) {
       let click_pos = match click_event {
@@ -1357,6 +1379,7 @@ pub fn button_system(backend: &@system.Backend) -> Unit {
             } else {
               is_guide_active.val = false
               println("【UI】: 组队引导已完成，进入正常组队界面。")
+              active_ui_category.val = UICategory::Normal
               squad_guide_shown.val = true 
             }
           }
