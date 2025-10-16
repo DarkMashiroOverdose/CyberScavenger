@@ -471,33 +471,42 @@ fn add_new_blue_circle(pos: @math.Vec2D) -> @system.Entity {
   let (bar_bg, bar_fg, shield_frame) = attach_health_bar()
   healths.set(new_unit, { current: 6, max: 6, bar_bg_entity: bar_bg, bar_fg_entity: bar_fg, shield_frame_entity: shield_frame })
 
-  // GDD: HP 9, 每8秒为队列附加1次持续4秒的buff，使所有成员造成的每次伤害额外增加1点。
-  // 现在还没做对队施加增益的系统，就先和三角形一个模板占位 TODO
+  // GDD: HP 6, 每 8 秒队伍施加 1 次持续 4 秒的增益，使所有成员造成的每次伤害额外增加2点增伤，再增加总伤10%的伤害。 
   combat_stats.set(new_unit, {
-    attack_range: 300.0, 
-    attack_type: AttackType::Bullet,
+    attack_range: 120.0, 
+    attack_type: AttackType::Ranged,
     aoe_radius: 4.0,
     on_hit_effects: [
-        OnHitEffect::DealDamage(3.0, Some(VFX_Type::BulletImpact)), 
-
-        OnHitEffect::AreaOfEffect(
-          [OnHitEffect::DealDamage(1.0, None)],
-          100.0, 
-          None,
-        ),
-        OnHitEffect::Knockback(15)
+      OnHitEffect::DealDamage(1.0, Some(PrimaryBeamBoom)) // 只造成1点伤害，没有命中特效
     ],
-    attack_cooldown: 1.0,
-    
+    attack_cooldown: 2.0,
     current_cooldown: 0.0,
-    aggro_range: 350.0, 
-    crit_rate: 0.05, 
-    attack_cast_vfx: None,    
+    aggro_range: 120.0, 
+    crit_rate: 0.05,
+    attack_cast_vfx: Some(VFX_Type::PrimaryBeam),
     area_effect_vfx: None,
     attack_sfx: Some(PlayerShoot), 
     bullet_color: Some(gdd_color_palette.get(Blue).unwrap_or("#FFFFFF"))
   })
-
+  team_abilities.set(new_unit, {
+    effects: [
+      OnHitEffect::ApplyBuff(
+        BuffType::AddDamage(2.0),
+        4.0,
+        Some(AttackUp)
+      ),
+      OnHitEffect::ApplyBuff(
+        BuffType::MultiplyDamage(1.10),
+        4.0,
+        None
+      ),
+    ],
+    cooldown: 8.0,
+    current_cooldown: 8.0,
+    targeting_rule: TargetingRule::AllAllies,
+    cast_vfx: None,
+    cast_sfx: None,
+  })
   all_units.val.push(new_unit)
   return new_unit
 }

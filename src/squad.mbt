@@ -56,7 +56,7 @@ pub let unit_definitions: Map[UnitType, UnitDefinition] = {
   db.set(UnitType::BlueTriangle,   { name: "蓝色三角", color_tag: SynergyTag::Blue,   shape_tag: UnitShape::Triangle, hp:7,   atk:5,
     gdd: "每 3 秒发射 1 条闪电链，首次命中敌人造成 4 点伤害，随后闪电链分裂至其他敌人，共分裂两次，每次分裂伤害减半"})
   db.set(UnitType::BlueCircle,     { name: "蓝色圆形", color_tag: SynergyTag::Blue,   shape_tag: UnitShape::Circle,   hp:6,   atk:1,
-    gdd: "每 8 秒队伍施加 1 次持续 4 秒的增益，使所有成员造成的每次伤害额外增加2点增伤！！未完成内容！！"})
+    gdd: "每 8 秒队伍施加 1 次持续 4 秒的增益，使所有成员造成的每次伤害额外增加2点增伤，再增加总伤10%的伤害。"})
   db
 }
 

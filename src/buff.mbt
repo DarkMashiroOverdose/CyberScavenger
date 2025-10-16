@@ -59,8 +59,10 @@ pub fn add_buff(target: @system.Entity, buff_type: BuffType, duration: Double) -
 fn get_computed_stats(unit: @system.Entity) -> Option[CombatStats] {
   if combat_stats.get(unit) is Some(base_stats) {
     if active_buffs.get(unit) is Some(buff_list) {
+      
       let mut computed_stats = base_stats
       
+      //只处理所有“加法”类型的Buff
       for buff in buff_list {
         match buff.buff_type {
           AddDamage(value) => {
@@ -72,6 +74,18 @@ fn get_computed_stats(unit: @system.Entity) -> Option[CombatStats] {
             })
             computed_stats = { ..computed_stats, on_hit_effects: new_effects }
           }
+          AddCritRate(value) => {
+            computed_stats = { ..computed_stats, crit_rate: computed_stats.crit_rate + value }
+          }
+          AddAttackRange(value) => {
+            computed_stats = { ..computed_stats, attack_range: computed_stats.attack_range + value }
+          }
+          _ => () 
+        }
+      }
+      
+      for buff in buff_list {
+        match buff.buff_type {
           MultiplyDamage(factor) => {
             let new_effects = computed_stats.on_hit_effects.map(fn(effect) {
               match effect {
@@ -81,39 +95,20 @@ fn get_computed_stats(unit: @system.Entity) -> Option[CombatStats] {
             })
             computed_stats = { ..computed_stats, on_hit_effects: new_effects }
           }
-          AddCritRate(value) => {
-            computed_stats = {
-              ..computed_stats,
-              crit_rate: computed_stats.crit_rate + value
-            }
+          MultiplyCooldown(factor) => {
+            computed_stats = { ..computed_stats, attack_cooldown: computed_stats.attack_cooldown * factor }
           }
           MultiplyEffectDuration(factor) => {
             let new_effects = computed_stats.on_hit_effects.map(fn(effect) {
-              match effect {
-                ApplyBuff(buff_type, duration, vfx_opt) => {
-                  OnHitEffect::ApplyBuff(buff_type, duration * factor, vfx_opt)
+                match effect {
+                    ApplyBuff(bt, dur, vfx) => OnHitEffect::ApplyBuff(bt, dur * factor, vfx)
+                    CreateHazardousArea(effs, r, dur, vfx) => OnHitEffect::CreateHazardousArea(effs, r, dur * factor, vfx)
+                    _ => effect
                 }
-                CreateHazardousArea(tick_effects, radius, duration, vfx_opt) => {
-                  OnHitEffect::CreateHazardousArea(tick_effects, radius, duration * factor, vfx_opt)
-                }
-                other_effect => other_effect
-              }
             })
             computed_stats = { ..computed_stats, on_hit_effects: new_effects }
           }
-          MultiplyCooldown(factor) => {
-            computed_stats = {
-              ..computed_stats,
-              attack_cooldown: computed_stats.attack_cooldown * factor
-            }
-          }
-          AddAttackRange(value) => {
-            computed_stats = {
-              ..computed_stats,
-              attack_range: computed_stats.attack_range + value
-            }
-          }
-          _ => () 
+          _ => ()
         }
       }
       
@@ -123,7 +118,6 @@ fn get_computed_stats(unit: @system.Entity) -> Option[CombatStats] {
       return Some(base_stats)
     }
   }
-
   return None
 }
 ///计算增益后的移动数值
