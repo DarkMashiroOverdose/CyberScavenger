@@ -34,6 +34,8 @@ let current_guide_image_index: Ref[Int] = Ref::new(0)
 let is_guide_active: Ref[Bool] = Ref::new(false)
 
 let control_scheme_button: Ref[Option[@system.Entity]] = Ref::new(None)
+
+let active_synergies_display_entities: Ref[Array[@system.Entity]] = Ref::new([])
 pub enum ButtonAction {
   SwitchState(UIState)
   SelectUnit(UnitType)
@@ -1192,6 +1194,78 @@ fn update_synergy_panel() -> Unit {
     }
   }
 }
+fn update_active_synergies_display() -> Unit {
+  for entity in active_synergies_display_entities.val {
+    @sprite.sprites.remove(entity)
+    @system.Entity::destroy(entity)
+  }
+  active_synergies_display_entities.val.clear()
+
+  
+    let entity = @system.Entity::new()
+    let layout = @system.TextLayout::new("羁绊增益总览", font="italic bold 24px mplus_hzk", color="white")
+    let sprite = @sprite.Sprite::from_text_layout(layout, 5, layer=@sprite.RenderLayer::ui())
+    @position.positions.set(entity, @math.Vec2D(1020.0, 130.0))
+    @sprite.sprites.set(entity, sprite)
+    active_synergies_display_entities.val.push(entity)
+
+
+  let counts: Map[SynergyTag, Int] = Map::new()
+  for unit_type in selected_squad.val {
+    if unit_definitions.get(unit_type) is Some(def) {
+      let current_count = counts.get(def.color_tag).unwrap_or(0)
+      counts.set(def.color_tag, current_count + 1)
+    }
+  }
+
+  let display_info: Array[(SynergyTag, String)] = []
+
+  for color_tag in [SynergyTag::Orange, SynergyTag::Purple, SynergyTag::Green, SynergyTag::Blue] {
+    let unit_count = counts.get(color_tag).unwrap_or(0)
+    if synergy_database.get(color_tag) is Some(synergy_info) {
+      let mut best_tier: Option[SynergyTier] = None
+      for tier in synergy_info.tiers {
+        if unit_count >= tier.count {
+          best_tier = Some(tier)
+        }
+      }
+      
+      if best_tier is Some(activated_tier) && activated_tier.count > 0 {
+        let text = "[\{activated_tier.count}] \{synergy_info.name}:\n \{synergy_info.state} \{activated_tier.bonus_text}"
+        display_info.push((color_tag, text))
+      }
+    }
+  }
+
+  let start_pos = @math.Vec2D(990.0, 160.0)
+  let line_height = 55.0
+  let font = "italic 20px mplus_hzk"
+
+  if display_info.is_empty() {
+    let entity = @system.Entity::new()
+    let layout = @system.TextLayout::new("无羁绊增益", font=font, color="gray")
+    let sprite = @sprite.Sprite::from_text_layout(layout, 5, layer=@sprite.RenderLayer::ui())
+    @position.positions.set(entity, start_pos)
+    @sprite.sprites.set(entity, sprite)
+    active_synergies_display_entities.val.push(entity)
+  } else {
+    for i = 0; i < display_info.length(); i = i + 1 {
+      let (synergy_color, text) = display_info[i]
+      
+      let color_string = gdd_color_palette.get(synergy_color).unwrap_or("#FFFFFF") // 如果找不到，默认为白色
+
+      let y_pos = start_pos[Y] + i.to_double() * line_height
+      let entity = @system.Entity::new()
+      
+      let layout = @system.TextLayout::new(text, font=font, color=color_string, line_height=25.0)
+      let sprite = @sprite.Sprite::from_text_layout(layout, 5, layer=@sprite.RenderLayer::ui())
+
+      @position.positions.set(entity, @math.Vec2D(start_pos[X], y_pos))
+      @sprite.sprites.set(entity, sprite)
+      active_synergies_display_entities.val.push(entity)
+    }
+  }
+}
 pub fn update_ui_system(_backend: &@system.Backend) -> Unit {
   if current_ui_state.val != prev_ui_state.val {
     if prev_ui_state.val == UIState::GameOver {
@@ -1236,6 +1310,7 @@ pub fn update_ui_system(_backend: &@system.Backend) -> Unit {
     update_selected_squad_display()
     update_detail_panel() 
     update_synergy_panel()
+    update_active_synergies_display()
   }
   
   if current_ui_state.val == UIState::Settings {

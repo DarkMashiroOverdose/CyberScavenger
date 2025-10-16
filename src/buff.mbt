@@ -151,3 +151,54 @@ fn get_computed_movement_stats(unit: @system.Entity) -> Option[MovementStats] {
 pub struct CooldownAbilityUnit {
 }
 pub let cooldown_ability_units: Map[@system.Entity, CooldownAbilityUnit] = Map::new()
+
+///羁绊buff系统
+pub struct ActiveSynergies {
+  buffs: Array[BuffType] // 所有普通的羁绊Buff
+  hp_multiplier: Double  // 单独存储特殊的HP乘数
+}
+
+pub let active_synergies: Ref[ActiveSynergies] = Ref::new({ buffs: [], hp_multiplier: 1.0 })
+pub fn calculate_active_synergies() -> Unit {
+  let counts: Map[SynergyTag, Int] = Map::new()
+  for unit_type in selected_squad.val {
+    if unit_definitions.get(unit_type) is Some(def) {
+      let current_count = counts.get(def.color_tag).unwrap_or(0)
+      counts.set(def.color_tag, current_count + 1)
+    }
+  }
+  println("【羁绊计算】: 队伍单位统计: \{counts}")
+
+  let calculated_buffs: Array[BuffType] = []
+  let mut calculated_hp_multiplier = 1.0
+
+  for color in [SynergyTag::Orange, SynergyTag::Purple, SynergyTag::Green, SynergyTag::Blue] {
+    let unit_count = counts.get(color).unwrap_or(0)
+    if synergy_database.get(color) is Some(synergy_info) {
+
+      let mut best_tier: Option[SynergyTier] = None
+      for tier in synergy_info.tiers {
+        if unit_count >= tier.count {
+          best_tier = Some(tier)
+        }
+      }
+
+      if best_tier is Some(activated_tier) {
+        println("  -> 已激活 `\{synergy_info.name}` 等级: \{activated_tier.count} 个单位")
+        if color == SynergyTag::Orange {
+          // 特殊处理HP羁绊
+          calculated_hp_multiplier = activated_tier.bonus_value
+        } else if activated_tier.effect is Some(buff) {
+          calculated_buffs.push(buff)
+        }
+      }
+    }
+  }
+
+  active_synergies.val = {
+    buffs: calculated_buffs,
+    hp_multiplier: calculated_hp_multiplier,
+  }
+  println("【羁绊】: 最终激活的Buff效果: \{active_synergies.val.buffs}")
+  println("【羁绊】: 最终HP乘数: \{active_synergies.val.hp_multiplier}")
+}

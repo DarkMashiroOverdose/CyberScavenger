@@ -83,6 +83,7 @@ pub struct SynergyTier {
   count: Int      // 激活所需的单位数量
   bonus_value: Double // 对应的奖励数值 (例如 1.2, 1.4, 1.6)
   bonus_text: String  // 对应的奖励描述 (例如 "20%")
+  effect: Option[BuffType]
 }
 
 // 新增 #2: 定义一个结构体来存储一种颜色的完整协同信息
@@ -93,56 +94,48 @@ pub struct SynergyInfo {
   state: String
 }
 
-// 新增 #3: 创建一个全局的、完整的“协同数据库”
+// 创建一个全局的、完整的“协同数据库”
 pub let synergy_database: Map[SynergyTag, SynergyInfo] = {
   let db = Map::new()
   
   db.set(SynergyTag::Orange, {
-    name: "安全型数字生命",
-    description: "每3个可增加HP上限",
+    name: "安全型数字生命", description: "增加HP上限", state: "全队HP上限",
     tiers: [
-      { count: 0, bonus_value: 1.0, bonus_text: "0%" },
-      { count: 3, bonus_value: 1.2, bonus_text: "20%" },
-      { count: 6, bonus_value: 1.4, bonus_text: "40%" },
-      { count: 9, bonus_value: 1.6, bonus_text: "60%" },
+      { count: 0, bonus_value: 1.0, bonus_text: "0%",   effect: None },
+      { count: 3, bonus_value: 1.2, bonus_text: "+20%", effect: None },
+      { count: 6, bonus_value: 1.4, bonus_text: "+40%", effect: None },
+      { count: 9, bonus_value: 1.6, bonus_text: "+60%", effect: None },
     ],
-    state: "全队HP上限增加"
   })
 
   db.set(SynergyTag::Purple, {
-    name: "故障型数字生命",
-    description: "每3个增加队伍暴击",
+    name: "故障型数字生命", description: "增加队伍暴击率", state: "全队暴击率",
     tiers: [
-      { count: 0, bonus_value: 1.0, bonus_text: "0%" },
-      { count: 3, bonus_value: 0.1, bonus_text: "10%" },
-      { count: 6, bonus_value: 0.2, bonus_text: "20%" },
-      { count: 9, bonus_value: 0.3, bonus_text: "30%" },
+      { count: 0, bonus_value: 0.0, bonus_text: "0%",   effect: Some(BuffType::AddCritRate(0.0)) },
+      { count: 3, bonus_value: 0.1, bonus_text: "+10%", effect: Some(BuffType::AddCritRate(0.1)) },
+      { count: 6, bonus_value: 0.2, bonus_text: "+20%", effect: Some(BuffType::AddCritRate(0.2)) },
+      { count: 9, bonus_value: 0.3, bonus_text: "+30%", effect: Some(BuffType::AddCritRate(0.3)) },
     ],
-    state: "全队暴击率增加"
   })
 
   db.set(SynergyTag::Green, {
-    name: "侵蚀型数字生命",
-    description: "每3个可增加攻击力",
+    name: "侵蚀型数字生命", description: "延长技能效果持续时间", state: "技能持续时间",
     tiers: [
-      { count: 0, bonus_value: 0, bonus_text: "0点" },
-      { count: 3, bonus_value: 2, bonus_text: "2点" },
-      { count: 6, bonus_value: 4, bonus_text: "4点" },
-      { count: 9, bonus_value: 6, bonus_text: "6点" },
+      { count: 0, bonus_value: 1.0, bonus_text: "0%",   effect: Some(BuffType::MultiplyEffectDuration(1.0)) },
+      { count: 3, bonus_value: 1.3, bonus_text: "+30%", effect: Some(BuffType::MultiplyEffectDuration(1.3)) },
+      { count: 6, bonus_value: 1.6, bonus_text: "+60%", effect: Some(BuffType::MultiplyEffectDuration(1.6)) },
+      { count: 9, bonus_value: 2.0, bonus_text: "+100%",effect: Some(BuffType::MultiplyEffectDuration(2.0)) },
     ],
-    state: "全队攻击力增加"
   })
 
   db.set(SynergyTag::Blue, {
-    name: "离散型数字生命",
-    description: "每3个增加队伍闪避",
+    name: "离散型数字生命", description: "增加总伤害", state: "全队总伤害",
     tiers: [
-      { count: 0, bonus_value: 0.1, bonus_text: "0%" },
-      { count: 3, bonus_value: 0.1, bonus_text: "10%" },
-      { count: 6, bonus_value: 0.2, bonus_text: "20%" },
-      { count: 9, bonus_value: 0.3, bonus_text: "30%" },
+      { count: 0, bonus_value: 1.0, bonus_text: "0%",   effect: Some(BuffType::MultiplyDamage(1.0)) },
+      { count: 3, bonus_value: 1.15,bonus_text: "+15%", effect: Some(BuffType::MultiplyDamage(1.15)) },
+      { count: 6, bonus_value: 1.30,bonus_text: "+30%", effect: Some(BuffType::MultiplyDamage(1.30)) },
+      { count: 9, bonus_value: 1.50,bonus_text: "+50%", effect: Some(BuffType::MultiplyDamage(1.50)) },
     ],
-    state: "全队闪避率增加"
   })
   db
 }

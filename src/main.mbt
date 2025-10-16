@@ -159,6 +159,7 @@ fn init_game_world() -> Unit {
     score.val = 0
     wave_count.val = 0
     spawn_timer.val = INITIAL_SPAWN_INTERVAL
+    calculate_active_synergies()
 
     // 1. 遍历玩家在组队界面选择的单位列表 `selected_squad`
     for unit_type_to_spawn in selected_squad.val {
