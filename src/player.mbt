@@ -72,6 +72,10 @@ pub fn player_control_system(_backend: &@system.Backend) -> Unit {
   let delta_seconds = 1.0 / 60.0
   if player_head.val is Some(head_entity) {
 
+    let dash_pressed = @system.is_pressed(@system.Space) || @system.is_pressed(@system.Space)
+    
+    is_dashing.val = dash_pressed && current_stamina.val > 0.0
+
     let mut target_direction_opt: Option[@math.Vec2D] = None
 
     match current_control_scheme.val {
@@ -125,8 +129,12 @@ pub fn player_control_system(_backend: &@system.Backend) -> Unit {
       let turn_angle = angle_difference * PLAYER_PROPORTIONAL_TURN_FACTOR
       player_facing_vector.val = rotate_vec2d(current_direction, turn_angle)
     }
-
-    let final_velocity = player_facing_vector.val.normalize().scalar_mul(PLAYER_SPEED)
+    let current_speed = if is_dashing.val {
+      PLAYER_SPEED * DASH_SPEED_MULTIPLIER
+    } else {
+      PLAYER_SPEED
+    }
+    let final_velocity = player_facing_vector.val.normalize().scalar_mul(current_speed)
     @velocity.velocities.set(head_entity, final_velocity)
   }
 }
@@ -301,6 +309,49 @@ pub fn wall_bounce_system(_backend: &@system.Backend, w: Double, h: Double) -> U
 
       // 3. 将修正后的新方向写回全局状态
       player_facing_vector.val = facing_vec
+    }
+  }
+}
+
+
+///冲刺系统
+pub let max_stamina: Ref[Double] = Ref::new(100.0) // 最大体力值
+pub let current_stamina: Ref[Double] = Ref::new(100.0) // 当前体力值
+pub let is_dashing: Ref[Bool] = Ref::new(false) // 是否正在冲刺
+
+// 体力消耗与恢复的参数
+const STAMINA_DEPLETION_RATE: Double = 30.0 // 每秒消耗30点体力
+const STAMINA_REGEN_DELAY: Double = 1.5    // 停止冲刺后，需要等待1.5秒才开始恢复
+const STAMINA_REGEN_RATE: Double = 20.0    // 每秒恢复20点体力
+
+// 追踪恢复延迟
+let stamina_regen_delay_timer: Ref[Double] = Ref::new(0.0)
+
+// 冲刺时的速度倍率
+const DASH_SPEED_MULTIPLIER: Double = 1.8 // 冲刺速度是普通速度的1.8倍
+
+pub fn stamina_system(_backend: &@system.Backend) -> Unit {
+  let delta_seconds = 1.0 / 60.0
+
+  if is_dashing.val {
+    if current_stamina.val > 0.0 {
+      // 消耗体力
+      current_stamina.val = max_double(0.0, current_stamina.val - STAMINA_DEPLETION_RATE * delta_seconds)
+      // 重置恢复延迟计时器
+      stamina_regen_delay_timer.val = STAMINA_REGEN_DELAY
+    } else {
+      // 体力耗尽，强制停止冲刺
+      is_dashing.val = false
+    }
+  } else {
+    if stamina_regen_delay_timer.val > 0.0 {
+      // 正在等待恢复延迟
+      stamina_regen_delay_timer.val -= delta_seconds
+    } else {
+      // 延迟结束，可以恢复体力
+      if current_stamina.val < max_stamina.val {
+        current_stamina.val = min_double(max_stamina.val, current_stamina.val + STAMINA_REGEN_RATE * delta_seconds)
+      }
     }
   }
 }

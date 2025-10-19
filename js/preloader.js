@@ -46,6 +46,8 @@ const ASSET_PATHS = [
   "assets/gui/start_menu/title.png",
   "assets/gui/start_menu/title_animated.png",
 
+  "assets/gui/hud/stamina_frame.png",
+
   "assets/sfx/Blip.wav",
   "assets/sfx/Boom.wav",
   "assets/sfx/Dead.wav",

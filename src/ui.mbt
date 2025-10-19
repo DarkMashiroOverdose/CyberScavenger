@@ -448,11 +448,11 @@ fn setup_ingame_hud() -> Unit {
   ui_entities.val.push(wave_label)
   wave_display_entity.val = Some(wave_label)
   let tutorial_label = @system.Entity::new()
-  @position.positions.set(tutorial_label, @math.Vec2D(200.0, 680.0))
+  @position.positions.set(tutorial_label, @math.Vec2D(70.0, 630.0))
   
   let initial_tutorial_text = match current_control_scheme.val {
-    ControlScheme::ADTurn => "按“A”键可左转，按“D”键可右转，按“P”键可暂停"
-    ControlScheme::WASDDirect => "使用 WASD 或方向键移动，按“P”键可暂停"
+    ControlScheme::ADTurn => "按“A”键可左转，按“D”键右转，按“P”键暂停，按空格冲刺"
+    ControlScheme::WASDDirect => "使用 WASD 或方向键移动，按“P”键可暂停，按空格冲刺"
     ControlScheme::Joystick  => "使用虚拟摇杆移动"
   }
   
@@ -1264,6 +1264,89 @@ fn update_active_synergies_display() -> Unit {
       @sprite.sprites.set(entity, sprite)
       active_synergies_display_entities.val.push(entity)
     }
+  }
+}
+let stamina_bar_bg_entity: Ref[Option[@system.Entity]] = Ref::new(None)
+let stamina_bar_fg_entity: Ref[Option[@system.Entity]] = Ref::new(None)
+
+const STAMINA_BAR_WIDTH: Double = 655.0 // 可以设置不同的宽度
+const STAMINA_BAR_HEIGHT: Double = 35.0
+fn attach_stamina_bar(pos: @math.Vec2D) -> (@system.Entity, @system.Entity) {
+  let frame_entity = @system.Entity::new()
+  let bar_fg = @system.Entity::new()
+
+  let frame_image_width = 750.0
+  let frame_image_height = 105.0
+  let frame_picture = @sprite.Picture::new(
+    @math.Vec2D(frame_image_width, frame_image_height),
+    "assets/gui/hud/stamina_frame.png" // 再次确认路径
+  )
+  let frame_offset = @math.Vec2D(-frame_image_width / 2.0, -frame_image_height / 2.0)
+  let frame_sprite = @sprite.Sprite::from_picture(
+    frame_picture,
+    10,
+    offset=frame_offset,
+    layer=@sprite.RenderLayer::ui()
+  )
+  @sprite.sprites.set(frame_entity, frame_sprite)
+  @position.positions.set(frame_entity, pos) 
+
+  let fg_rect = @sprite.ColorRect::new(@math.Vec2D(STAMINA_BAR_WIDTH, STAMINA_BAR_HEIGHT), "#ffde3ab3")
+  let fg_offset = @math.Vec2D(-STAMINA_BAR_WIDTH / 2.0, -STAMINA_BAR_HEIGHT / 2.0)
+  let fg_sprite = @sprite.Sprite::from_color_rect(fg_rect, 7, offset=fg_offset, layer=@sprite.RenderLayer::ui())
+  @sprite.sprites.set(bar_fg, fg_sprite)
+  @position.positions.set(bar_fg, pos) 
+
+  return (frame_entity, bar_fg)
+}
+pub fn stamina_bar_update_system(_backend: &@system.Backend) -> Unit {
+  guard current_ui_state.val == UIState::InGame else {
+    cleanup_stamina_bar()
+    return
+  }
+
+  let bar_pos_x = MAP_WIDTH / 2.0
+  let bar_pos_y = MAP_HEIGHT - 50.0
+  let bar_pos = @math.Vec2D(bar_pos_x, bar_pos_y)
+
+  if stamina_bar_bg_entity.val is None {
+    println("【UI】: 首次进入 InGame，创建体力条。")
+    let (frame, fg) = attach_stamina_bar(bar_pos) // 传入位置
+    stamina_bar_bg_entity.val = Some(frame)
+    stamina_bar_fg_entity.val = Some(fg)
+  }
+
+  if stamina_bar_fg_entity.val is Some(fg_entity) {
+    if @sprite.sprites.get(fg_entity) is Some(fg_sprite) {
+
+      let stamina_percentage = if max_stamina.val > 0.0 { current_stamina.val / max_stamina.val } else { 0.0 }
+      match fg_sprite.sprite_type {
+        ColorRect(rect) => {
+          let current_fg_width = STAMINA_BAR_WIDTH * stamina_percentage
+          let new_rect_size = @math.Vec2D(current_fg_width, STAMINA_BAR_HEIGHT)
+
+          if rect.size != new_rect_size {
+            let new_rect = { ..rect, size: new_rect_size }
+            let new_offset = @math.Vec2D(-STAMINA_BAR_WIDTH / 2.0, -STAMINA_BAR_HEIGHT / 2.0)
+            let new_fg_sprite = @sprite.Sprite::from_color_rect(new_rect, fg_sprite.zindex, offset=new_offset, layer=fg_sprite.layer)
+            @sprite.sprites.set(fg_entity, new_fg_sprite)
+          }
+        }
+        _ => ()
+      }
+    }
+  }
+}
+fn cleanup_stamina_bar() -> Unit {
+  if stamina_bar_bg_entity.val is Some(bg) { 
+    @sprite.sprites.remove(bg)
+    @system.Entity::destroy(bg)
+    stamina_bar_bg_entity.val = None 
+  }
+  if stamina_bar_fg_entity.val is Some(fg) { 
+    @sprite.sprites.remove(fg)
+    @system.Entity::destroy(fg)
+    stamina_bar_fg_entity.val = None 
   }
 }
 pub fn update_ui_system(_backend: &@system.Backend) -> Unit {

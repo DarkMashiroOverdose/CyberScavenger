@@ -72,6 +72,7 @@ pub fn update_game_world_system(backend: &@system.Backend) -> Unit {
   // 玩家输入，决定火车头的移动方向
   player_control_system(backend)
   wall_bounce_system(backend, MAP_WIDTH, MAP_HEIGHT)
+  stamina_system(backend)
   // AI输入，决定敌人的移动方向
   enemy_movement_system(backend)
   // AI索敌，决定攻击目标
@@ -116,6 +117,8 @@ pub fn update_game_world_system(backend: &@system.Backend) -> Unit {
   update_shield_display_system(backend)
   // 分数可视化
   update_score_display_system(backend)
+  // 体力条
+  stamina_bar_update_system(backend)
   // 移除所有被标记为“死亡”的实体和它们的组件
   cleanup_system(backend)
 }
@@ -136,7 +139,7 @@ fn init_game(backend: &@system.Backend) -> Unit {
 
   setup_main_menu_ui()
   is_paused.val = false
-
+  
   //let _ = add_new_orange_square(@math.Vec2D(350.0, 500.0))
   //let _ = add_new_orange_triangle(@math.Vec2D(350.0, 500.0))
   //let _ = add_new_orange_circle(@math.Vec2D(350.0, 500.0))
