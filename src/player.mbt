@@ -72,9 +72,16 @@ pub fn player_control_system(_backend: &@system.Backend) -> Unit {
   let delta_seconds = 1.0 / 60.0
   if player_head.val is Some(head_entity) {
 
-    let dash_pressed = @system.is_pressed(@system.Space) || @system.is_pressed(@system.Space)
+    let dash_intent = if current_control_scheme.val == ControlScheme::Joystick {
+      // 如果是触摸模式，检查是否有手指正在触发冲刺
+      dash_touch_id.val is Some(_)
+    } else {
+      // AD 或 WASD 模式，检查键盘空格键
+      @system.is_pressed(@system.Space) || @system.is_pressed(@system.Space)
+    }
     
-    is_dashing.val = dash_pressed && current_stamina.val > 0.0
+    // 决定最终的 is_dashing 状态
+    is_dashing.val = dash_intent && current_stamina.val > 0.0
 
     let mut target_direction_opt: Option[@math.Vec2D] = None
 
@@ -351,6 +358,45 @@ pub fn stamina_system(_backend: &@system.Backend) -> Unit {
       // 延迟结束，可以恢复体力
       if current_stamina.val < max_stamina.val {
         current_stamina.val = min_double(max_stamina.val, current_stamina.val + STAMINA_REGEN_RATE * delta_seconds)
+      }
+    }
+  }
+}
+
+
+let dash_activation_zone: @math.Rect = {
+  // 假设中心点在右下角区域
+  position: @math.Vec2D(MAP_WIDTH - 250.0, MAP_HEIGHT - 300.0), 
+  // 定义一个合适的触摸区域大小
+  size: @math.Vec2D(600.0, 500.0), 
+}
+
+let dash_touch_id: Ref[Option[Int]] = Ref::new(None)
+
+pub fn dash_touch_system(_backend: &@system.Backend) -> Unit {
+  guard current_control_scheme.val == ControlScheme::Joystick else {
+    // 如果切换到非触摸模式，确保清理冲刺状态
+    if dash_touch_id.val is Some(_) {
+      dash_touch_id.val = None
+    }
+    return
+  }
+
+  if dash_touch_id.val is Some(active_id) {
+    if @system.just_ended_touches.get(active_id) is Some(_) {
+      // 控制冲刺的手指抬起了，清除 ID
+      dash_touch_id.val = None
+      return // 本帧处理完毕
+    }
+  }
+
+  if dash_touch_id.val is None { // 只有在当前没有手指触发冲刺时，才检测新的按下
+    for touch in @system.just_began_touches.values() {
+      // 检查手指是否按在了右下角的激活区域内
+      if is_point_inside_centered_rect(touch.pos, dash_activation_zone) {
+        // 捕获这个手指
+        dash_touch_id.val = Some(touch.id)
+        break // 只捕获第一个在区域内按下的手指
       }
     }
   }

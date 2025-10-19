@@ -71,8 +71,9 @@ pub fn update_game_world_system(backend: &@system.Backend) -> Unit {
   player_train_management_system(backend)
   // 玩家输入，决定火车头的移动方向
   player_control_system(backend)
-  wall_bounce_system(backend, MAP_WIDTH, MAP_HEIGHT)
   stamina_system(backend)
+  dash_touch_system(backend)
+  wall_bounce_system(backend, MAP_WIDTH, MAP_HEIGHT)
   // AI输入，决定敌人的移动方向
   enemy_movement_system(backend)
   // AI索敌，决定攻击目标
