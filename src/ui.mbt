@@ -1566,12 +1566,14 @@ pub fn button_system(backend: &@system.Backend) -> Unit {
         is_currently_hovered = true
         break
       }
+      
     }
-
+    if is_currently_hovered && button.action is ButtonAction::SelectUnit(unit_type) {
+        hovered_unit_for_detail_view.val = Some(unit_type) // 设置当前悬停的单位类型
+    }
     if is_currently_hovered != button.is_hovered {
       button.is_hovered = is_currently_hovered
       let new_appearance_to_show = if is_currently_hovered { button.hover_appearance } else { button.normal_appearance }
-      
       if @sprite.sprites.get(entity) is Some(current_sprite) {
           let new_sprite = match new_appearance_to_show {
             ButtonAppearance::FromPicture(path, size) => {
