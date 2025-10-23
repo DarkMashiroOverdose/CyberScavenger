@@ -337,14 +337,6 @@ fn calculate_permanently_buffed_movement_stats(
             _ => ()
         }
     }
-    for effect in all_effects {
-        match effect {
-            UpgradeEffect::MultiplySpeedFlat(value) => {
-                computed_stats = { ..computed_stats, speed: computed_stats.speed + value }
-            }
-            _ => ()
-        }
-    }
     return computed_stats
 }
 

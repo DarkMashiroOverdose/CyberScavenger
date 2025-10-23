@@ -130,17 +130,29 @@ pub fn player_control_system(_backend: &@system.Backend) -> Unit {
       }
     }
 
-    if target_direction_opt is Some(target_direction) {
-      let current_direction = player_facing_vector.val
-      let angle_difference = signed_angle_between(current_direction, target_direction)
-      let turn_angle = angle_difference * PLAYER_PROPORTIONAL_TURN_FACTOR
-      player_facing_vector.val = rotate_vec2d(current_direction, turn_angle)
+   let mut speed_multiplier = 1.0 // 默认乘数为 1.0
+    match permanent_buffs.get(head_entity) {
+      Some(pb) => {
+        for effect in pb.effects {
+          if effect is UpgradeEffect::MultiplySpeedPercent(factor) {
+            speed_multiplier *= factor // 累乘所有速度百分比效果
+          }
+        }
+      }
+      None => () // 没有永久 Buff 组件，乘数保持 1.0
     }
+    println("【速度调试】: 玩家速度乘数: \{speed_multiplier}") // 添加调试打印
+
+    // 计算当前速度时应用 Buff
+    let base_speed_after_buffs = PLAYER_SPEED * speed_multiplier // 先应用永久 Buff
+
     let current_speed = if is_dashing.val {
-      PLAYER_SPEED * DASH_SPEED_MULTIPLIER
+      base_speed_after_buffs * DASH_SPEED_MULTIPLIER // 在 Buff 后的基础上应用冲刺倍率
     } else {
-      PLAYER_SPEED
+      base_speed_after_buffs // 使用 Buff 后的基础速度
     }
+    println("【速度调试】: 最终速度: \{current_speed}") // 添加调试打印
+    
     let final_velocity = player_facing_vector.val.normalize().scalar_mul(current_speed)
     @velocity.velocities.set(head_entity, final_velocity)
   }
@@ -327,9 +339,9 @@ pub let current_stamina: Ref[Double] = Ref::new(100.0) // 当前体力值
 pub let is_dashing: Ref[Bool] = Ref::new(false) // 是否正在冲刺
 
 // 体力消耗与恢复的参数
-const STAMINA_DEPLETION_RATE: Double = 30.0 // 每秒消耗30点体力
-const STAMINA_REGEN_DELAY: Double = 1.5    // 停止冲刺后，需要等待1.5秒才开始恢复
-const STAMINA_REGEN_RATE: Double = 20.0    // 每秒恢复20点体力
+let base_stamina_depletion_rate: Ref[Double] = Ref::new(30.0) // 基础消耗速率
+let base_stamina_regen_rate: Ref[Double] = Ref::new(20.0)     // 基础恢复速率
+let base_stamina_regen_delay: Ref[Double] = Ref::new(1.5)     // 恢复延迟 (暂时不变)
 
 // 追踪恢复延迟
 let stamina_regen_delay_timer: Ref[Double] = Ref::new(0.0)
@@ -340,26 +352,56 @@ const DASH_SPEED_MULTIPLIER: Double = 1.8 // 冲刺速度是普通速度的1.8�
 pub fn stamina_system(_backend: &@system.Backend) -> Unit {
   let delta_seconds = 1.0 / 60.0
 
+  if player_head.val is Some(head_unit) {
+    calculate_final_stamina_rates(head_unit)
+  }
+
   if is_dashing.val {
     if current_stamina.val > 0.0 {
-      // 消耗体力
-      current_stamina.val = max_double(0.0, current_stamina.val - STAMINA_DEPLETION_RATE * delta_seconds)
-      // 重置恢复延迟计时器
-      stamina_regen_delay_timer.val = STAMINA_REGEN_DELAY
+      current_stamina.val = max_double(0.0, current_stamina.val - current_stamina_depletion_rate.val * delta_seconds)
+      stamina_regen_delay_timer.val = base_stamina_regen_delay.val
     } else {
-      // 体力耗尽，强制停止冲刺
       is_dashing.val = false
     }
   } else {
     if stamina_regen_delay_timer.val > 0.0 {
-      // 正在等待恢复延迟
       stamina_regen_delay_timer.val -= delta_seconds
     } else {
-      // 延迟结束，可以恢复体力
       if current_stamina.val < max_stamina.val {
-        current_stamina.val = min_double(max_stamina.val, current_stamina.val + STAMINA_REGEN_RATE * delta_seconds)
+        current_stamina.val = min_double(max_stamina.val, current_stamina.val + current_stamina_regen_rate.val * delta_seconds)
       }
     }
   }
 }
 
+let current_stamina_depletion_rate: Ref[Double] = Ref::new(base_stamina_depletion_rate.val) // 当前计算后的消耗速率
+let current_stamina_regen_rate: Ref[Double] = Ref::new(base_stamina_regen_rate.val)         // 当前计算后的恢复速率
+pub fn calculate_final_stamina_rates(unit: @system.Entity) -> Unit {
+    let mut final_depletion_rate = base_stamina_depletion_rate.val
+    let mut final_regen_rate = base_stamina_regen_rate.val
+
+    let unit_permanent_effects: Array[UpgradeEffect] = match permanent_buffs.get(unit) {
+      Some(pb) => pb.effects // 分支 1: 如果有，返回 effects 数组
+      None => []             // 分支 2: 如果没有，返回空数组
+    } // match 结束
+    let global_synergy_effects = active_synergies.val.effects // 假设羁绊未来可能影响体力
+    let all_effects = unit_permanent_effects + global_synergy_effects
+
+    for effect in all_effects {
+        match effect {
+            UpgradeEffect::MultiplyStaminaCostRate(factor) => {
+                final_depletion_rate *= factor
+            }
+            UpgradeEffect::MultiplyStaminaRegenRate(factor) => {
+                final_regen_rate *= factor
+            }
+            _ => ()
+        }
+    }
+
+    // 应用临时 Buff (如果未来有临时体力 Buff 的话)
+    // if active_buffs.get(unit) is Some(temp_buff_list) { ... }
+
+    current_stamina_depletion_rate.val = final_depletion_rate
+    current_stamina_regen_rate.val = final_regen_rate
+}

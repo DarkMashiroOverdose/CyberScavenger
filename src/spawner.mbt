@@ -2,6 +2,7 @@ const MAP_WIDTH: Double = 1280.0
 const MAP_HEIGHT: Double = 720.0
 // 敌人生成在屏幕外的一个缓冲距离
 const SPAWN_PADDING: Double = 50.0
+const UPGRADE_WAVE_INTERVAL: Int = 4
 const HEAL_WAVE_INTERVAL: Int = 5
 // --- 敌人生成器状态 ---
 // 两波敌人之间的间隔时间（秒）
@@ -39,31 +40,46 @@ fn get_random_edge_position() -> @math.Vec2D {
 
 pub fn endless_spawner_system(_backend: &@system.Backend) -> Unit {
   let delta_seconds = 1.0 / 60.0
+
+  // 升级选择界面冻结刷怪计时器
+  guard current_ui_state.val != UIState::UpgradeSelection else {
+    return
+  }
+
   spawn_timer.val -= delta_seconds
 
   if spawn_timer.val <= 0.0 {
-    spawn_timer.val = INITIAL_SPAWN_INTERVAL
+
+    let should_offer_upgrade = wave_count.val > 0 && (wave_count.val % UPGRADE_WAVE_INTERVAL == 0)
+
+    if should_offer_upgrade {
+      // 立即触发升级
+      println("【游戏】: 第 \{wave_count.val} 波时间到，触发升级选择！")
+      current_ui_state.val = UIState::UpgradeSelection
+    } 
+    // 条件不满足
     wave_count.val += 1
+    spawn_timer.val = INITIAL_SPAWN_INTERVAL 
     println("[Game] Wave \{wave_count.val} starting!")
+    // 治疗逻辑
+    if wave_count.val > 0 && wave_count.val % HEAL_WAVE_INTERVAL == 0 {
+       heal_all_player_units()
+    }
 
+    // 刷怪逻辑 
     let num_to_spawn = 8 + wave_count.val * 1
-
     let enemy_pool = [
-      EnemyType::Grunt, EnemyType::Grunt, EnemyType::Grunt, 
+      EnemyType::Grunt, EnemyType::Grunt, EnemyType::Grunt,
       EnemyType::Archer, EnemyType::Archer,
       EnemyType::TankEnemy,
     ]
-    if wave_count.val > 0 && wave_count.val % HEAL_WAVE_INTERVAL == 0 {
-      heal_all_player_units()
-    }
-
     for _i = 0; _i < num_to_spawn; _i = _i + 1 {
       let random_index = global_rng.int(limit=enemy_pool.length())
       let enemy_to_spawn = enemy_pool[random_index]
       let spawn_pos = get_random_edge_position()
       spawn_enemy(enemy_to_spawn, spawn_pos)
     }
-  }
+  } // if spawn_timer.val <= 0.0 结束
 }
 
 fn heal_all_player_units() -> Unit {

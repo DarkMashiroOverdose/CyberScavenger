@@ -7,6 +7,7 @@ pub enum UIState {
   SquadBuilder
   Settings
   GameOver
+  UpgradeSelection
 } derive(Eq)
 pub enum UICategory {
   Normal
@@ -45,6 +46,7 @@ pub enum ButtonAction {
   UnlockAudio
   NextGuidePage
   ToggleControlScheme
+  SelectUpgrade(UpgradeType)
 } derive(Eq)
 
 pub struct Button {
@@ -1349,6 +1351,133 @@ fn cleanup_stamina_bar() -> Unit {
     stamina_bar_fg_entity.val = None 
   }
 }
+
+// 创建升级选择界面的 UI
+fn setup_upgrade_selection_ui() -> Unit {
+  println("【UI】: 进入升级选择界面...")
+
+  // 1. 获取随机升级选项
+  let options = get_random_upgrades(3) // 随机选 3 个
+  current_upgrade_options.val = options // 存储当前选项
+
+  // 2. 创建背景遮罩 (可选，增加界面清晰度)
+  let overlay = @system.Entity::new()
+  @position.positions.set(overlay, @math.Vec2D(0.0, 0.0))
+  let shape = @sprite.ColoredShape::new(
+    @sprite.Shape::rect(MAP_WIDTH, MAP_HEIGHT, 0.0), // 使用常量
+    @sprite.DrawStyle::fill("rgba(0, 0, 0, 0.7)")
+  )
+  let sprite = @sprite.Sprite::from_shape(shape, 800, layer=@sprite.RenderLayer::ui()) // 确保 Z 轴较高
+  @sprite.sprites.set(overlay, sprite)
+  @ui.uis.set(overlay, @ui.Ui::new())
+  ui_entities.val.push(overlay)
+
+  // 3. 创建标题
+  let title_entity = @system.Entity::new()
+  let title_pos = @math.Vec2D(MAP_WIDTH / 2.0, 100.0)
+  @position.positions.set(title_entity, title_pos)
+  let title_layout = @system.TextLayout::new(
+    "选择一项强化",
+    font="bold 48px mplus_hzk",
+    color="white",
+    align=@system.TextAlign::center()
+  )
+  let title_sprite = @sprite.Sprite::from_text_layout(title_layout, 801, layer=@sprite.RenderLayer::ui())
+  @sprite.sprites.set(title_entity, title_sprite)
+  @ui.uis.set(title_entity, @ui.Ui::new())
+  ui_entities.val.push(title_entity)
+
+  // 4. 为每个选项创建卡牌 UI
+  let card_width = 250.0
+  let card_height = 350.0
+  let start_x = (MAP_WIDTH - (options.length().to_double() * card_width + (options.length() - 1).to_double() * 50.0)) / 2.0
+  let card_y = MAP_HEIGHT / 2.0 + 50.0 // 稍微往下放一点
+
+  for i = 0; i < options.length(); i = i + 1 {
+    let upgrade_type = options[i]
+    let def = upgrade_database.get(upgrade_type).unwrap() // 假设一定能找到
+
+    let card_x = start_x + i.to_double() * (card_width + 50.0) + card_width / 2.0 // 卡片中心 X
+    let card_pos = @math.Vec2D(card_x, card_y)
+
+    // a. 卡片背景 (暂时用灰色矩形)
+    let card_bg_entity = @system.Entity::new()
+    @position.positions.set(card_bg_entity, card_pos)
+    let card_shape = @sprite.ColoredShape::new(
+      @sprite.Shape::rect(card_width, card_height, 0), // 圆角矩形
+      @sprite.DrawStyle::fill("#444444"), // 深灰色
+    )
+    // 预留图片替换方案：这里可以用 Sprite::from_picture 替换
+    let card_sprite = @sprite.Sprite::from_shape(card_shape, 801, layer=@sprite.RenderLayer::ui(), offset=@math.Vec2D(-card_width/2.0, -card_height/2.0))
+    @sprite.sprites.set(card_bg_entity, card_sprite)
+    @ui.uis.set(card_bg_entity, @ui.Ui::new())
+    ui_entities.val.push(card_bg_entity)
+
+    // b. 卡片名称
+    let name_entity = @system.Entity::new()
+    let name_pos = @math.Vec2D(card_x, card_y - card_height / 2.0 + 40.0) // 顶部
+    @position.positions.set(name_entity, name_pos)
+    let name_max_width = card_width - 20.0 // 【提取】最大宽度
+    let name_layout = @system.TextLayout::new(
+      def.name,
+      font="bold 24px mplus_hzk", color="white",
+      max_width=Some(name_max_width), // 使用变量
+      align=@system.TextAlign::center()
+    )
+    let name_offset = @math.Vec2D(-name_max_width / 2.0, 0.0) 
+    let name_sprite = @sprite.Sprite::from_text_layout(
+        name_layout,
+        802,
+        layer=@sprite.RenderLayer::ui(),
+        offset=name_offset // 【应用偏移】
+    )
+    @sprite.sprites.set(name_entity, name_sprite)
+    @ui.uis.set(name_entity, @ui.Ui::new())
+    ui_entities.val.push(name_entity)
+
+    // c. 卡片描述
+   let desc_entity = @system.Entity::new()
+    let desc_pos = @math.Vec2D(card_x, card_y + 20.0) 
+    @position.positions.set(desc_entity, desc_pos)
+    let desc_max_width = card_width - 40.0
+    let desc_layout = @system.TextLayout::new(
+      def.description,
+      font="20px mplus_hzk", color="#DDDDDD",
+      max_width=Some(desc_max_width),
+      align=@system.TextAlign::center(),
+      line_height= 24.0
+    )
+    let approx_line_height = 24.0
+    let desc_offset = @math.Vec2D(-desc_max_width / 2.0, -approx_line_height / 2.0) 
+    let desc_sprite = @sprite.Sprite::from_text_layout(
+        desc_layout,
+        802,
+        layer=@sprite.RenderLayer::ui(),
+        offset=desc_offset 
+    )
+    @sprite.sprites.set(desc_entity, desc_sprite)
+    @ui.uis.set(desc_entity, @ui.Ui::new())
+    ui_entities.val.push(desc_entity)
+
+    // d. 创建按钮
+    let button_entity = @system.Entity::new()
+    let button_comp = Button::{
+      area: @math.Rect::{ position: card_pos, size: @math.Vec2D(card_width, card_height) },
+      action: ButtonAction::SelectUpgrade(upgrade_type),
+      // 外观可以保持简单，或者在悬停时改变背景颜色/边框
+      normal_appearance: ButtonAppearance::FromShape(card_shape, @math.Vec2D(-card_width/2.0, -card_height/2.0)), // 复用背景形状
+      hover_appearance: ButtonAppearance::FromShape( // 悬停时用亮灰色
+         @sprite.ColoredShape::new(@sprite.Shape::rect(card_width, card_height, 0), @sprite.DrawStyle::fill("#feb2b2ff")),
+         @math.Vec2D(-card_width/2.0, -card_height/2.0)
+      ),
+      is_hovered: false,
+      category: UICategory::Normal // 这个界面属于普通 UI
+    }
+    buttons.set(button_entity, button_comp)
+    ui_entities.val.push(button_entity) // 按钮实体也需要加入清理列表
+  }
+}
+
 pub fn update_ui_system(_backend: &@system.Backend) -> Unit {
   if current_ui_state.val != prev_ui_state.val {
     if prev_ui_state.val == UIState::GameOver {
@@ -1365,6 +1494,7 @@ pub fn update_ui_system(_backend: &@system.Backend) -> Unit {
       UIState::InGame => setup_ingame_hud()
       UIState::Settings => setup_settings_ui()
       UIState::GameOver => setup_game_over_ui()
+      UIState::UpgradeSelection => setup_upgrade_selection_ui()
     }
     
     //进入组队界面时，清空上一局的队伍
@@ -1575,6 +1705,17 @@ pub fn button_system(backend: &@system.Backend) -> Unit {
           }
           return 
         }
+        ButtonAction::SelectUpgrade(upgrade_type) => { 
+            println("【动作】: 玩家选择了升级 [\{upgrade_type}]")
+
+            current_ui_state.val = UIState::InGame
+            apply_upgrade(upgrade_type)
+
+            spawn_timer.val = INITIAL_SPAWN_INTERVAL 
+            println("【游戏】: 升级完成，下一波倒计时开始...")
+
+            return 
+          }
       }
         
         return

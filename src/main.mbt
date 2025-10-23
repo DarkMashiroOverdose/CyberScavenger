@@ -133,7 +133,7 @@ fn init_game(backend: &@system.Backend) -> Unit {
   setup_vfx_library()
   setup_sfx_library()
   setup_pickup_library()
-
+  setup_upgrade_database()
 
   spawn_timer.val = INITIAL_SPAWN_INTERVAL
   wave_count.val = 0
