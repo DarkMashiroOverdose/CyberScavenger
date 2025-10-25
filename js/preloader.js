@@ -48,6 +48,12 @@ const ASSET_PATHS = [
 
   "assets/gui/hud/stamina_frame.png",
 
+  "assets/gui/upgrade/cards_confirm_hover.png",
+  "assets/gui/upgrade/cards_confirm.png",
+  "assets/gui/upgrade/upgrade_selection_card_hover.png",
+  "assets/gui/upgrade/upgrade_selection_card_selected.png",
+  "assets/gui/upgrade/upgrade_selection_card.png",
+
   "assets/sfx/Blip.wav",
   "assets/sfx/Boom.wav",
   "assets/sfx/Dead.wav",

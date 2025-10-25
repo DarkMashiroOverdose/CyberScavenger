@@ -325,7 +325,10 @@ pub fn apply_upgrade(upgrade_type: UpgradeType) -> Unit {
   } // match upgrade_database.get 结束
 } // 函数结束
 
-let current_upgrade_options: Ref[Array[UpgradeType]] = Ref::new([])
+let current_upgrade_options: Ref[Array[UpgradeType]] = Ref::new([]) 
+let selected_upgrade_for_confirmation: Ref[Option[UpgradeType]] = Ref::new(None)
+let selected_card_overlay_entity: Ref[Option[@system.Entity]] = Ref::new(None)
+let confirm_upgrade_button_entity: Ref[Option[@system.Entity]] = Ref::new(None)
 ///随机发牌
 fn get_random_upgrades(count: Int) -> Array[UpgradeType] {
   let all_upgrade_keys_array: Array[UpgradeType] = upgrade_database.keys().to_array()

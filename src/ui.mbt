@@ -47,6 +47,7 @@ pub enum ButtonAction {
   NextGuidePage
   ToggleControlScheme
   SelectUpgrade(UpgradeType)
+  ConfirmUpgradeSelection
 } derive(Eq)
 
 pub struct Button {
@@ -83,14 +84,14 @@ fn is_point_inside_centered_rect(point: @math.Vec2D, rect_area: @math.Rect) -> B
 
 fn cleanup_ui() -> Unit {
   println("【调试日志 A】: 检测到状态切换，开始清理旧的UI...")
-  
+
   for entity in ui_entities.val {
     if @sprite.sprites.get(entity) is Some(_) { let _ = @sprite.sprites.remove(entity) }
     @system.Entity::destroy(entity)
   }
-  
+
   for slot in squad_display_slots.val {
-    if @sprite.sprites.get(slot.portrait_entity) is Some(_) { 
+    if @sprite.sprites.get(slot.portrait_entity) is Some(_) {
       let _ = @sprite.sprites.remove(slot.portrait_entity)
     }
     @system.Entity::destroy(slot.portrait_entity)
@@ -116,20 +117,36 @@ fn cleanup_ui() -> Unit {
     if @sprite.sprites.get(entity) is Some(_) { let _ = @sprite.sprites.remove(entity) }
     @system.Entity::destroy(entity)
   }
+  for entity in guide_entities.val {
+     if @sprite.sprites.get(entity) is Some(_) { let _ = @sprite.sprites.remove(entity) }
+     @system.Entity::destroy(entity)
+  }
+
+
   ui_entities.val = []
   squad_display_slots.val = []
   squad_builder_unit_buttons.val = []
   detail_panel_entities.val = []
   synergy_panel_entities.val = []
+  guide_entities.val = []
+
   buttons.clear()
-  
+
   current_synergy_filter.val = Some(SynergyTag::Orange)
   current_shape_filter.val = None
   selected_unit_for_detail_view.val = None
+  sticky_unit_for_detail_view.val = None
+
+  selected_upgrade_for_confirmation.val = None
+  selected_card_overlay_entity.val = None // 清除引用
+  confirm_upgrade_button_entity.val = None // 清除引用
+
+  active_ui_category.val = UICategory::Normal
+  is_guide_active.val = false
+
 
   println("【调试日志 C】: 旧UI清理完毕！")
 }
-
 fn cleanup_game_world() -> Unit {
   println("【清理】: 正在彻底清理游戏世界中的所有单位...")
   
@@ -1354,25 +1371,42 @@ fn cleanup_stamina_bar() -> Unit {
 
 // 创建升级选择界面的 UI
 fn setup_upgrade_selection_ui() -> Unit {
+  // --- 将常量定义移到函数内部 ---
+  let card_normal_png = "assets/gui/upgrade/upgrade_selection_card.png"
+  let card_hover_png = "assets/gui/upgrade/upgrade_selection_card_hover.png"
+  let card_selected_png = "assets/gui/upgrade/upgrade_selection_card_selected.png"
+  let confirm_normal_png = "assets/gui/upgrade/cards_confirm.png"
+  let confirm_hover_png = "assets/gui/upgrade/cards_confirm_hover.png"
+
+  let card_visual_width = 280.0
+  let card_visual_height = 380.0
+  let card_button_width = 250.0
+  let card_button_height = 350.0
+  let card_visual_offset = @math.Vec2D(-card_visual_width / 2.0, -card_visual_height / 2.0)
+
+  let confirm_size = @math.Vec2D(365.0, 65.0)
+  let confirm_offset = @math.Vec2D(-confirm_size.0 / 2.0, -confirm_size.1 / 2.0)
+
   println("【UI】: 进入升级选择界面...")
+  selected_upgrade_for_confirmation.val = None
 
-  // 1. 获取随机升级选项
-  let options = get_random_upgrades(3) // 随机选 3 个
-  current_upgrade_options.val = options // 存储当前选项
+  // 获取随机升级选项
+  let options = get_random_upgrades(3)
+  current_upgrade_options.val = options
 
-  // 2. 创建背景遮罩 (可选，增加界面清晰度)
+  // 创建背景遮罩
   let overlay = @system.Entity::new()
   @position.positions.set(overlay, @math.Vec2D(0.0, 0.0))
   let shape = @sprite.ColoredShape::new(
-    @sprite.Shape::rect(MAP_WIDTH, MAP_HEIGHT, 0.0), // 使用常量
+    @sprite.Shape::rect(MAP_WIDTH, MAP_HEIGHT, 0.0),
     @sprite.DrawStyle::fill("rgba(0, 0, 0, 0.7)")
   )
-  let sprite = @sprite.Sprite::from_shape(shape, 800, layer=@sprite.RenderLayer::ui()) // 确保 Z 轴较高
+  let sprite = @sprite.Sprite::from_shape(shape, 800, layer=@sprite.RenderLayer::ui())
   @sprite.sprites.set(overlay, sprite)
   @ui.uis.set(overlay, @ui.Ui::new())
   ui_entities.val.push(overlay)
 
-  // 3. 创建标题
+  // 创建标题 
   let title_entity = @system.Entity::new()
   let title_pos = @math.Vec2D(MAP_WIDTH / 2.0, 100.0)
   @position.positions.set(title_entity, title_pos)
@@ -1387,37 +1421,37 @@ fn setup_upgrade_selection_ui() -> Unit {
   @ui.uis.set(title_entity, @ui.Ui::new())
   ui_entities.val.push(title_entity)
 
-  // 4. 为每个选项创建卡牌 UI
-  let card_width = 250.0
-  let card_height = 350.0
-  let start_x = (MAP_WIDTH - (options.length().to_double() * card_width + (options.length() - 1).to_double() * 50.0)) / 2.0
-  let card_y = MAP_HEIGHT / 2.0 + 50.0 // 稍微往下放一点
+  // 为每个选项创建卡牌 UI
+  let start_x = (MAP_WIDTH - (options.length().to_double() * card_visual_width + (options.length() - 1).to_double() * 50.0)) / 2.0 // 【修改】按视觉宽度布局
+  let card_y = MAP_HEIGHT / 2.0 + 50.0
 
   for i = 0; i < options.length(); i = i + 1 {
     let upgrade_type = options[i]
-    let def = upgrade_database.get(upgrade_type).unwrap() // 假设一定能找到
+    let def = upgrade_database.get(upgrade_type).unwrap()
 
-    let card_x = start_x + i.to_double() * (card_width + 50.0) + card_width / 2.0 // 卡片中心 X
-    let card_pos = @math.Vec2D(card_x, card_y)
+    let card_x = start_x + i.to_double() * (card_visual_width + 50.0) + card_visual_width / 2.0 // 卡片视觉中心 X
+    let card_pos = @math.Vec2D(card_x, card_y) // 实体位置 = 视觉中心
 
-    // a. 卡片背景 (暂时用灰色矩形)
-    let card_bg_entity = @system.Entity::new()
-    @position.positions.set(card_bg_entity, card_pos)
-    let card_shape = @sprite.ColoredShape::new(
-      @sprite.Shape::rect(card_width, card_height, 0), // 圆角矩形
-      @sprite.DrawStyle::fill("#444444"), // 深灰色
+    // 创建按钮实体，并用普通 PNG 作为初始外观
+    let button_entity = @system.Entity::new()
+    @position.positions.set(button_entity, card_pos) // 按钮实体位置在卡片中心
+
+    let normal_picture = @sprite.Picture::new(@math.Vec2D(card_visual_width, card_visual_height), card_normal_png)
+    let initial_sprite = @sprite.Sprite::from_picture(
+        normal_picture,
+        801, // 卡片 Z 轴
+        layer=@sprite.RenderLayer::ui(),
+        offset=card_visual_offset // 使用视觉偏移
     )
-    // 预留图片替换方案：这里可以用 Sprite::from_picture 替换
-    let card_sprite = @sprite.Sprite::from_shape(card_shape, 801, layer=@sprite.RenderLayer::ui(), offset=@math.Vec2D(-card_width/2.0, -card_height/2.0))
-    @sprite.sprites.set(card_bg_entity, card_sprite)
-    @ui.uis.set(card_bg_entity, @ui.Ui::new())
-    ui_entities.val.push(card_bg_entity)
+    @sprite.sprites.set(button_entity, initial_sprite)
+    @ui.uis.set(button_entity, @ui.Ui::new())
+    ui_entities.val.push(button_entity) // 添加到清理列表
 
-    // b. 卡片名称
+    // 卡片名称
     let name_entity = @system.Entity::new()
-    let name_pos = @math.Vec2D(card_x, card_y - card_height / 2.0 + 40.0) // 顶部
+    let name_pos = @math.Vec2D(card_x, card_y - card_visual_height / 2.0 + 80 ) // 基于视觉高度
     @position.positions.set(name_entity, name_pos)
-    let name_max_width = card_width - 20.0 // 【提取】最大宽度
+    let name_max_width = card_button_width - 20.0 // 最大宽度
     let name_layout = @system.TextLayout::new(
       def.name,
       font="bold 24px mplus_hzk", color="white",
@@ -1426,20 +1460,17 @@ fn setup_upgrade_selection_ui() -> Unit {
     )
     let name_offset = @math.Vec2D(-name_max_width / 2.0, 0.0) 
     let name_sprite = @sprite.Sprite::from_text_layout(
-        name_layout,
-        802,
-        layer=@sprite.RenderLayer::ui(),
-        offset=name_offset // 【应用偏移】
+        name_layout, 803, layer=@sprite.RenderLayer::ui(), offset=name_offset // Z 轴高于卡片
     )
     @sprite.sprites.set(name_entity, name_sprite)
     @ui.uis.set(name_entity, @ui.Ui::new())
     ui_entities.val.push(name_entity)
 
-    // c. 卡片描述
-   let desc_entity = @system.Entity::new()
-    let desc_pos = @math.Vec2D(card_x, card_y + 20.0) 
+    // 卡片描述 (位置基于视觉尺寸)
+    let desc_entity = @system.Entity::new()
+    let desc_pos = @math.Vec2D(card_x, card_y + 20.0) //基于视觉中心
     @position.positions.set(desc_entity, desc_pos)
-    let desc_max_width = card_width - 40.0
+    let desc_max_width = card_button_width - 40.0
     let desc_layout = @system.TextLayout::new(
       def.description,
       font="20px mplus_hzk", color="#DDDDDD",
@@ -1448,35 +1479,72 @@ fn setup_upgrade_selection_ui() -> Unit {
       line_height= 24.0
     )
     let approx_line_height = 24.0
-    let desc_offset = @math.Vec2D(-desc_max_width / 2.0, -approx_line_height / 2.0) 
+    let desc_offset = @math.Vec2D(-desc_max_width / 2.0, -approx_line_height / 2.0)
     let desc_sprite = @sprite.Sprite::from_text_layout(
-        desc_layout,
-        802,
-        layer=@sprite.RenderLayer::ui(),
-        offset=desc_offset 
+        desc_layout, 803, layer=@sprite.RenderLayer::ui(), offset=desc_offset // Z 轴高于卡片
     )
     @sprite.sprites.set(desc_entity, desc_sprite)
     @ui.uis.set(desc_entity, @ui.Ui::new())
     ui_entities.val.push(desc_entity)
 
-    // d. 创建按钮
-    let button_entity = @system.Entity::new()
+    // d创建按钮组件 (使用交互尺寸和 PNG 外观)
     let button_comp = Button::{
-      area: @math.Rect::{ position: card_pos, size: @math.Vec2D(card_width, card_height) },
+      area: @math.Rect::{ position: card_pos, size: @math.Vec2D(card_button_width, card_button_height) }, // 使用按钮交互尺寸
       action: ButtonAction::SelectUpgrade(upgrade_type),
-      // 外观可以保持简单，或者在悬停时改变背景颜色/边框
-      normal_appearance: ButtonAppearance::FromShape(card_shape, @math.Vec2D(-card_width/2.0, -card_height/2.0)), // 复用背景形状
-      hover_appearance: ButtonAppearance::FromShape( // 悬停时用亮灰色
-         @sprite.ColoredShape::new(@sprite.Shape::rect(card_width, card_height, 0), @sprite.DrawStyle::fill("#feb2b2ff")),
-         @math.Vec2D(-card_width/2.0, -card_height/2.0)
-      ),
+      normal_appearance: ButtonAppearance::FromPicture(card_normal_png, @math.Vec2D(card_visual_width, card_visual_height)),
+      hover_appearance: ButtonAppearance::FromPicture(card_hover_png, @math.Vec2D(card_visual_width, card_visual_height)),
       is_hovered: false,
-      category: UICategory::Normal // 这个界面属于普通 UI
+      category: UICategory::Normal
     }
     buttons.set(button_entity, button_comp)
-    ui_entities.val.push(button_entity) // 按钮实体也需要加入清理列表
+    // 按钮实体已加入 ui_entities
+  } // for 循环结束
+
+  // 5. 创建选中状态的覆盖 Sprite (初始隐藏)
+  let overlay_entity = @system.Entity::new()
+  let selected_picture = @sprite.Picture::new(@math.Vec2D(card_visual_width, card_visual_height), card_selected_png)
+  let overlay_sprite = @sprite.Sprite::from_picture(
+      selected_picture,
+      802, // 比卡片(801)和更高
+      layer=@sprite.RenderLayer::ui(),
+      offset=card_visual_offset
+  )
+  overlay_sprite.visible = false // 初始隐藏
+  @sprite.sprites.set(overlay_entity, overlay_sprite)
+  @position.positions.set(overlay_entity, @math.Vec2D(-1000.0, -1000.0)) // 初始放在屏幕外，避免闪烁
+  @ui.uis.set(overlay_entity, @ui.Ui::new())
+  ui_entities.val.push(overlay_entity) // 加入清理列表
+  selected_card_overlay_entity.val = Some(overlay_entity) // 存储实体引用
+
+  // 创建确认选择按钮 (初始隐藏)
+  let confirm_entity = @system.Entity::new()
+  let confirm_pos = @math.Vec2D(MAP_WIDTH / 2.0, card_y + card_visual_height / 2.0 + 60.0) // 放在卡片下方
+  @position.positions.set(confirm_entity, confirm_pos)
+
+  let confirm_normal_pic = @sprite.Picture::new(confirm_size, confirm_normal_png)
+  let confirm_sprite = @sprite.Sprite::from_picture(
+      confirm_normal_pic,
+      801,
+      layer=@sprite.RenderLayer::ui(),
+      offset=confirm_offset 
+  )
+  confirm_sprite.visible = false
+  @sprite.sprites.set(confirm_entity, confirm_sprite)
+  @ui.uis.set(confirm_entity, @ui.Ui::new())
+  ui_entities.val.push(confirm_entity)
+  confirm_upgrade_button_entity.val = Some(confirm_entity) 
+
+  let confirm_button_comp = Button::{
+      area: @math.Rect::{ position: confirm_pos, size: confirm_size },
+      action: ButtonAction::ConfirmUpgradeSelection, 
+      normal_appearance: ButtonAppearance::FromPicture(confirm_normal_png, confirm_size),
+      hover_appearance: ButtonAppearance::FromPicture(confirm_hover_png, confirm_size),
+      is_hovered: false,
+      category: UICategory::Normal
   }
-}
+  buttons.set(confirm_entity, confirm_button_comp)
+
+} // 函数结束
 
 pub fn update_ui_system(_backend: &@system.Backend) -> Unit {
   if current_ui_state.val != prev_ui_state.val {
@@ -1707,16 +1775,67 @@ pub fn button_system(backend: &@system.Backend) -> Unit {
           }
           return 
         }
-        ButtonAction::SelectUpgrade(upgrade_type) => { 
-            println("【动作】: 玩家选择了升级 [\{upgrade_type}]")
+        ButtonAction::SelectUpgrade(upgrade_type) => {
+            println("【动作】: 玩家预选了升级 [\{upgrade_type}]")
+            selected_upgrade_for_confirmation.val = Some(upgrade_type)
 
-            current_ui_state.val = UIState::InGame
-            apply_upgrade(upgrade_type)
+            if selected_card_overlay_entity.val is Some(overlay_entity) &&
+               @position.positions.get(entity) is Some(button_pos) {
+                  @position.positions.set(overlay_entity, button_pos.0)
+                  // 使用 match 获取 Sprite 并修改 visible
+                  match @sprite.sprites.get(overlay_entity) {
+                      Some(overlay_sprite) => { // 匹配 Some 分支
+                          overlay_sprite.visible = true
+                          println("  -> 显示选中覆盖 Sprite")
+                      }
+                      None => { 
+                          println("[警告] 无法获取选中覆盖 Sprite 以显示！")
+                      }
+                  } // match 结束
+            }
 
-            spawn_timer.val = INITIAL_SPAWN_INTERVAL 
-            println("【游戏】: 升级完成，下一波倒计时开始...")
+            //显示确认按钮
+            if confirm_upgrade_button_entity.val is Some(confirm_entity) {
+                 // 使用 match 获取 Sprite 并修改 visible
+                 match @sprite.sprites.get(confirm_entity) {
+                     Some(confirm_sprite) => { // 匹配 Some 分支
+                         confirm_sprite.visible = true
+                         println("  -> 显示确认按钮")
+                     }
+                     None => { // 匹配 None 分支
+                         println("[警告] 无法获取确认按钮 Sprite 以显示！")
+                     }
+                 } // match 结束
+            }
+            return
+          }
 
-            return 
+          ButtonAction::ConfirmUpgradeSelection => {
+             println("【动作】: 玩家确认选择升级...")
+             if selected_upgrade_for_confirmation.val is Some(selected_type) {
+                 apply_upgrade(selected_type)
+                 current_ui_state.val = UIState::InGame
+                 spawn_timer.val = INITIAL_SPAWN_INTERVAL
+                 selected_upgrade_for_confirmation.val = None
+                 println("【游戏】: 确认选择升级，下一波倒计时开始...")
+
+                 // 【修正】隐藏选中框和确认按钮 (使用 match)
+                 if selected_card_overlay_entity.val is Some(overlay) {
+                     match @sprite.sprites.get(overlay) {
+                         Some(overlay_sprite) => overlay_sprite.visible = false
+                         None => () // 获取不到就算了
+                     }
+                 }
+                 if confirm_upgrade_button_entity.val is Some(confirm_btn) {
+                     match @sprite.sprites.get(confirm_btn) {
+                         Some(confirm_sprite) => confirm_sprite.visible = false
+                         None => () // 获取不到就算了
+                     }
+                 }
+             } else {
+                 println("[警告] 尝试确认升级但未预选任何卡牌！")
+             }
+             return
           }
       }
         
