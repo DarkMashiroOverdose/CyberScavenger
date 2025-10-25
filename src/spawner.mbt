@@ -2,7 +2,7 @@ const MAP_WIDTH: Double = 1280.0
 const MAP_HEIGHT: Double = 720.0
 // 敌人生成在屏幕外的一个缓冲距离
 const SPAWN_PADDING: Double = 50.0
-const UPGRADE_WAVE_INTERVAL: Int = 1
+const UPGRADE_WAVE_INTERVAL: Int = 6
 const HEAL_WAVE_INTERVAL: Int = 5
 // --- 敌人生成器状态 ---
 // 两波敌人之间的间隔时间（秒）
