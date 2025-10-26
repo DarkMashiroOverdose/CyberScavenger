@@ -472,7 +472,7 @@ fn setup_ingame_hud() -> Unit {
   let initial_tutorial_text = match current_control_scheme.val {
     ControlScheme::ADTurn => "按“A”键可左转，按“D”键右转，按“P”键暂停，按空格冲刺"
     ControlScheme::WASDDirect => "使用 WASD 或方向键移动，按“P”键可暂停，按空格冲刺"
-    ControlScheme::Joystick  => "使用虚拟摇杆移动"
+    ControlScheme::Joystick  => "使用虚拟摇杆移动，长按右侧屏幕可冲刺"
   }
   
   let tutorial_layout = @system.TextLayout::new(
@@ -508,6 +508,11 @@ pub fn update_wave_display_system(_backend: &@system.Backend) -> Unit {
           let mut waves_until_heal = HEAL_WAVE_INTERVAL - wave_count.val % HEAL_WAVE_INTERVAL
           if waves_until_heal == 0 { waves_until_heal = HEAL_WAVE_INTERVAL }
           new_wave_text = new_wave_text + "\n距下次全队治疗还有 \{waves_until_heal} 波"
+
+          let mut waves_until_upgrade = UPGRADE_WAVE_INTERVAL - ( wave_count.val - 1 )% UPGRADE_WAVE_INTERVAL
+          if waves_until_upgrade == 0 && wave_count.val > 0 { waves_until_upgrade = UPGRADE_WAVE_INTERVAL }
+          new_wave_text = new_wave_text + "\n距下次获得强化还有 \{waves_until_upgrade} 波"
+
           if old_layout.content != new_wave_text {
             let new_layout = @system.TextLayout::new(
               new_wave_text,
@@ -1414,7 +1419,7 @@ fn setup_upgrade_selection_ui() -> Unit {
     "选择一项强化",
     font="bold 48px mplus_hzk",
     color="white",
-    align=@system.TextAlign::center()
+    align=@system.TextAlign::left()
   )
   let title_sprite = @sprite.Sprite::from_text_layout(title_layout, 801, layer=@sprite.RenderLayer::ui())
   @sprite.sprites.set(title_entity, title_sprite)
