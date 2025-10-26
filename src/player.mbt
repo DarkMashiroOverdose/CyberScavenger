@@ -130,29 +130,36 @@ pub fn player_control_system(_backend: &@system.Backend) -> Unit {
       }
     }
 
-   let mut speed_multiplier = 1.0 // 默认乘数为 1.0
+    if target_direction_opt is Some(target_direction) {
+      let current_direction = player_facing_vector.val
+      let angle_difference = signed_angle_between(current_direction, target_direction)
+      let turn_angle = angle_difference * PLAYER_PROPORTIONAL_TURN_FACTOR
+      player_facing_vector.val = rotate_vec2d(current_direction, turn_angle) // 更新朝向
+      
+    }
+
+    // 计算速度 Buff
+    let mut speed_multiplier = 1.0
     match permanent_buffs.get(head_entity) {
       Some(pb) => {
         for effect in pb.effects {
           if effect is UpgradeEffect::MultiplySpeedPercent(factor) {
-            speed_multiplier *= factor // 累乘所有速度百分比效果
+            speed_multiplier *= factor
           }
         }
       }
-      None => () // 没有永久 Buff 组件，乘数保持 1.0
+      None => ()
     }
-    println("【速度调试】: 玩家速度乘数: \{speed_multiplier}") // 添加调试打印
 
-    // 计算当前速度时应用 Buff
-    let base_speed_after_buffs = PLAYER_SPEED * speed_multiplier // 先应用永久 Buff
-
+    // 计算最终速度 (应用 Buff 和冲刺)
+    let base_speed_after_buffs = PLAYER_SPEED * speed_multiplier
     let current_speed = if is_dashing.val {
-      base_speed_after_buffs * DASH_SPEED_MULTIPLIER // 在 Buff 后的基础上应用冲刺倍率
+      base_speed_after_buffs * DASH_SPEED_MULTIPLIER
     } else {
-      base_speed_after_buffs // 使用 Buff 后的基础速度
+      base_speed_after_buffs
     }
-    println("【速度调试】: 最终速度: \{current_speed}") // 添加调试打印
-    
+
+    // 设置最终速度 (使用已更新的朝向和速度)
     let final_velocity = player_facing_vector.val.normalize().scalar_mul(current_speed)
     @velocity.velocities.set(head_entity, final_velocity)
   }
