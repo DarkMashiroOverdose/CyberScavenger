@@ -8,6 +8,7 @@ pub enum UIState {
   Settings
   GameOver
   UpgradeSelection
+  AboutScreen
 } derive(Eq)
 pub enum UICategory {
   Normal
@@ -425,7 +426,7 @@ fn setup_main_menu_ui() -> Unit {
       @math.Vec2D(110.0, 60.0),
     ),
     is_hovered: false, 
-    action: ButtonAction::SwitchState(UIState::Settings),
+    action: ButtonAction::SwitchState(UIState::AboutScreen),
     category: UICategory::Normal
   }
   buttons.set(about_button_entity, about_button_component)
@@ -552,9 +553,18 @@ pub fn update_wave_display_system(_backend: &@system.Backend) -> Unit {
 fn setup_settings_ui() -> Unit {
   println("【UI】: 正在创建设置界面...")
 
+  let settings_background = @system.Entity::new()
+  @position.positions.set(settings_background, @math.Vec2D(0.0, 0.0))
+  let background = @sprite.ColoredShape::new(@sprite.Shape::rect(1300,800,0.0), @sprite.DrawStyle::fill("rgba(50, 50, 50, 0.5)"))
+  let sprite = @sprite.Sprite::from_shape(background, 0, layer=@sprite.RenderLayer::ui())
+  @sprite.sprites.set(settings_background, sprite)
+  @ui.uis.set(settings_background, @ui.Ui::new())
+  ui_entities.val.push(settings_background)
+
+
   let center_x = MAP_WIDTH / 2.0
   let current_y = Ref::new(200.0) // 使用 Ref 方便垂直布局
-  let line_height = 100.0
+  let line_height = 80.0
   let button_width = 100.0
   let button_height = 100.0
   let label_font = "48px mplus_hzk"
@@ -1139,6 +1149,128 @@ fn update_grid_visibility() -> Unit {
     }
   }
 }
+fn setup_about_screen_ui() -> Unit {
+
+  let about_screen_background = @system.Entity::new()
+  @position.positions.set(about_screen_background, @math.Vec2D(0.0, 0.0))
+  let background = @sprite.ColoredShape::new(@sprite.Shape::rect(1300,800,0.0), @sprite.DrawStyle::fill("rgba(50, 50, 50, 0.5)"))
+  let sprite = @sprite.Sprite::from_shape(background, 0, layer=@sprite.RenderLayer::ui())
+  @sprite.sprites.set(about_screen_background, sprite)
+  @ui.uis.set(about_screen_background, @ui.Ui::new())
+  ui_entities.val.push(about_screen_background)
+
+  println("【UI】: 正在创建关于界面...")
+  let center_x = MAP_WIDTH / 2.0
+  let current_y = Ref::new(100.0) // 垂直起始位置
+
+  // 创建标题
+  let title_entity = @system.Entity::new()
+  let title_pos = @math.Vec2D(center_x, current_y.val)
+  @position.positions.set(title_entity, title_pos)
+  let title_layout = @system.TextLayout::new(
+    "关于本作",
+    font="bold 48px mplus_hzk",
+    color="white",
+    align=@system.TextAlign::center()
+  )
+  let title_sprite = @sprite.Sprite::from_text_layout(title_layout, 5, layer=@sprite.RenderLayer::ui(), offset=@math.Vec2D(-130.0, -45.0)) // 估算偏移
+  @sprite.sprites.set(title_entity, title_sprite)
+  @ui.uis.set(title_entity, @ui.Ui::new())
+  ui_entities.val.push(title_entity)
+  current_y.val += 100.0
+
+  // 创建团队介绍文本
+  let team_text_entity = @system.Entity::new()
+  let team_text_pos = @math.Vec2D(center_x, current_y.val) // 往下移
+  @position.positions.set(team_text_entity, team_text_pos)
+  
+  // 请在这里填入你们的团队介绍
+  let about_content = 
+    "赛博拾荒者(Cyber Scavenger)\n「漆黑之羽如深渊相伴」\n" +
+    "团队成员：\n" +
+    "  - SuOilfield - 主程序/美术\n" +
+    "  - Betamos    - 主策划/音乐\n" +
+    "  " +
+    "感谢您游玩我们的游戏！"
+
+  let text_layout = @system.TextLayout::new(
+    about_content,
+    font="36px mplus_hzk",
+    color="#ffffffff",
+    max_width=Some(MAP_WIDTH * 0.6), // 占屏幕 60% 宽度
+    align=@system.TextAlign::center(), // 居中对齐
+    line_height=50.0
+  )
+  let text_sprite = @sprite.Sprite::from_text_layout(text_layout, 5, layer=@sprite.RenderLayer::ui(), offset=@math.Vec2D(-(MAP_WIDTH * 0.6) / 2.0, -100.0)) // 估算偏移
+  @sprite.sprites.set(team_text_entity, text_sprite)
+  @ui.uis.set(team_text_entity, @ui.Ui::new())
+  ui_entities.val.push(team_text_entity)
+  current_y.val += 250.0 // 为文本预留空间
+
+  let thanks_entity = @system.Entity::new()
+  let thanks_pos = @math.Vec2D(center_x, current_y.val)
+  @position.positions.set(thanks_entity, thanks_pos)
+  let thanks_layout = @system.TextLayout::new(
+    "特别鸣谢",
+    font="bold 32px mplus_hzk",
+    color="white",
+    align=@system.TextAlign::center()
+  )
+  let thanks_sprite = @sprite.Sprite::from_text_layout(thanks_layout, 5, layer=@sprite.RenderLayer::ui(), offset=@math.Vec2D(-100.0, -45.0)) // 估算偏移
+  @sprite.sprites.set(thanks_entity, thanks_sprite)
+  @ui.uis.set(thanks_entity, @ui.Ui::new())
+  ui_entities.val.push(thanks_entity)
+  current_y.val += 100.0
+
+  // 创建团队介绍文本
+  let thanks_text_entity = @system.Entity::new()
+  let thanks_text_pos = @math.Vec2D(center_x, current_y.val) // 往下移
+  @position.positions.set(thanks_text_entity, thanks_text_pos)
+  
+  // 请在这里填入你们的团队介绍
+  let about_content = 
+    "Moonbit-Selene引擎\n" +
+    "- Milky2018 -\n" +
+    "美术协助\n" +
+    "- Crys7aL_L1nE -\n"+
+    "以及所有协助测试的朋友"
+
+  let text_layout = @system.TextLayout::new(
+    about_content,
+    font="36px mplus_hzk",
+    color="#ffffffff",
+    max_width=Some(MAP_WIDTH * 0.6), // 占屏幕 60% 宽度
+    align=@system.TextAlign::center(), // 居中对齐
+    line_height=50.0
+  )
+  let text_sprite = @sprite.Sprite::from_text_layout(text_layout, 5, layer=@sprite.RenderLayer::ui(), offset=@math.Vec2D(-(MAP_WIDTH * 0.6) / 2.0, -100.0)) // 估算偏移
+  @sprite.sprites.set(thanks_text_entity, text_sprite)
+  @ui.uis.set(thanks_text_entity, @ui.Ui::new())
+  ui_entities.val.push(thanks_text_entity)
+  current_y.val += 150.0 // 为文本预留空间
+
+  // 创建返回按钮
+  let back_button_entity = @system.Entity::new()
+  let back_pos = @math.Vec2D(center_x, current_y.val)
+  @position.positions.set(back_button_entity, back_pos)
+  let back_layout = @system.TextLayout::new("[ 点击空白处返回主菜单 ]", font="24px mplus_hzk", color="white", align=@system.TextAlign::center())
+  let back_hover_layout = @system.TextLayout::new("[ 点击空白处返回主菜单 ]", font="24px mplus_hzk", color="yellow", align=@system.TextAlign::center())
+  let back_sprite = @sprite.Sprite::from_text_layout(back_layout, 1, layer=@sprite.RenderLayer::ui(), offset=@math.Vec2D(-150.0, -16.0))
+  @sprite.sprites.set(back_button_entity, back_sprite)
+  @ui.uis.set(back_button_entity, @ui.Ui::new())
+  
+  let back_button_component = Button::{
+    area: @math.Rect::{ position: @math.Vec2D(640, 360), size: @math.Vec2D(1280.0, 720.0) },
+    action: ButtonAction::SwitchState(UIState::MainMenu), // 返回主菜单
+    normal_appearance: ButtonAppearance::FromTextLayout(back_layout),
+    hover_appearance: ButtonAppearance::FromTextLayout(back_hover_layout),
+    is_hovered: false, 
+    category: UICategory::Normal
+  }
+  buttons.set(back_button_entity, back_button_component)
+  ui_entities.val.push(back_button_entity)
+}
+
 fn update_detail_panel() -> Unit {
   //先清理掉上一帧的旧详情
   for entity in detail_panel_entities.val {
@@ -1775,6 +1907,7 @@ pub fn update_ui_system(_backend: &@system.Backend) -> Unit {
       UIState::Settings => setup_settings_ui()
       UIState::GameOver => setup_game_over_ui()
       UIState::UpgradeSelection => setup_upgrade_selection_ui()
+      UIState::AboutScreen => setup_about_screen_ui()
     }
     
     //进入组队界面时，清空上一局的队伍
