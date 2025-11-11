@@ -208,7 +208,7 @@ pub fn check_game_over_system(_backend: &@system.Backend) -> Unit {
     return
   }
   
-  // 2. 统计场上还存活的玩家单位数量
+  // 统计场上还存活的玩家单位数量
   let mut living_player_units = 0
   for unit in all_units.val {
     if unit.is_alive() {
@@ -218,7 +218,7 @@ pub fn check_game_over_system(_backend: &@system.Backend) -> Unit {
     }
   }
 
-  // 3. 如果存活的玩家单位为 0，就切换到“游戏结束”场景
+  // 如果存活的玩家单位为 0，就切换到“游戏结束”场景
   if living_player_units == 0 {
     println("【游戏逻辑】: 所有玩家单位已阵亡，游戏结束！")
     current_ui_state.val = UIState::GameOver
