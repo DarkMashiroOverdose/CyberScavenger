@@ -1162,6 +1162,16 @@ fn setup_squad_builder_grid_buttons() -> Unit {
   }
 }
 fn setup_game_over_ui() -> Unit {
+  // 创建背景遮罩
+  let game_over_background = @system.Entity::new()
+  @position.positions.set(game_over_background, @math.Vec2D(0.0, 0.0))
+  let background = @sprite.ColoredShape::new(@sprite.Shape::rect(MAP_WIDTH + 10, MAP_HEIGHT + 10,0.0), @sprite.DrawStyle::fill("rgba(50, 50, 50, 0.7)"))
+  let sprite = @sprite.Sprite::from_shape(background, 10, layer=@sprite.RenderLayer::ui())
+  @sprite.sprites.set(game_over_background, sprite)
+  @ui.uis.set(game_over_background, @ui.Ui::new())
+  ui_entities.val.push(game_over_background)
+
+  // 创建 "GAME OVER" 标题
   let game_over_title = @system.Entity::new()
   @position.positions.set(game_over_title, @math.Vec2D(640.0, 300.0))
   let layout = @system.TextLayout::new(
@@ -1170,11 +1180,12 @@ fn setup_game_over_ui() -> Unit {
     color="red",
     align=@system.TextAlign::center()
   )
-  let sprite = @sprite.Sprite::from_text_layout(layout, 15, layer=@sprite.RenderLayer::ui())
-  @sprite.sprites.set(game_over_title, sprite)
+  let title_sprite = @sprite.Sprite::from_text_layout(layout, 15, layer=@sprite.RenderLayer::ui())
+  @sprite.sprites.set(game_over_title, title_sprite)
   @ui.uis.set(game_over_title, @ui.Ui::new())
   ui_entities.val.push(game_over_title)
   
+  // 创建 "最终得分"
   let final_score_entity = @system.Entity::new()
   @position.positions.set(final_score_entity, @math.Vec2D(640.0, 380.0)) 
   let score_text = "最终得分: \{score.val}"
@@ -1185,27 +1196,70 @@ fn setup_game_over_ui() -> Unit {
     align=@system.TextAlign::center()
   )
   let score_sprite = @sprite.Sprite::from_text_layout(score_layout, 15, layer=@sprite.RenderLayer::ui())
-  
-  let game_over_background = @system.Entity::new()
-  @position.positions.set(game_over_background, @math.Vec2D(0.0, 0.0))
-  let background = @sprite.ColoredShape::new(@sprite.Shape::rect(1300,800,0.0), @sprite.DrawStyle::fill("rgba(125, 125, 125, 0.50)"))
-  let sprite = @sprite.Sprite::from_shape(background, 10, layer=@sprite.RenderLayer::ui())
-  @sprite.sprites.set(game_over_background, sprite)
-  @ui.uis.set(game_over_background, @ui.Ui::new())
-  ui_entities.val.push(game_over_background)
-
   @sprite.sprites.set(final_score_entity, score_sprite)
   @ui.uis.set(final_score_entity, @ui.Ui::new())
   ui_entities.val.push(final_score_entity)
 
-  let back_button = @system.Entity::new()
-  @position.positions.set(back_button, @math.Vec2D(640.0, 450.0))
+  // 创建 "本局配队" 标题 
+  let squad_title_entity = @system.Entity::new()
+  let squad_title_pos = @math.Vec2D(640, 440.0) // Y=440
+  @position.positions.set(squad_title_entity, squad_title_pos)
+  let squad_text = "本局配队:"
+  let squad_title_layout = @system.TextLayout::new(
+    squad_text, 
+    font="bold 32px mplus_hzk", 
+    color="white",
+    align=@system.TextAlign::center()
+  )
+  let squad_title_sprite = @sprite.Sprite::from_text_layout(squad_title_layout, 15, layer=@sprite.RenderLayer::ui()) // 估算偏移
+  @sprite.sprites.set(squad_title_entity, squad_title_sprite)
+  @ui.uis.set(squad_title_entity, @ui.Ui::new())
+  ui_entities.val.push(squad_title_entity)
+  
+  // 循环显示配队图标
+  let squad_len = selected_squad.val.length() // 【依赖】squad::selected_squad
+  let icon_size = 50.0 // 图标大小
+  let icon_spacing = 65.0 // 图标间距
+  // 计算起始 X 位置，使其整体居中
+  let squad_icons_width = squad_len.to_double() * icon_spacing - (if squad_len > 0 { icon_spacing - icon_size } else { 0.0 })
+  let squad_start_x = (MAP_WIDTH - squad_icons_width) / 2.0 + icon_size / 2.0 + 150
+  let squad_y = 485.0 // Y=485
+
+  for i = 0; i < squad_len; i = i + 1 {
+    let unit_type = selected_squad.val[i]
+    // squad::unit_definitions, player_units::gdd_color_palette
+    if unit_definitions.get(unit_type) is Some(def) {
+      let color_str = gdd_color_palette.get(def.color_tag).unwrap_or("#FFFFFF")
+
+      // 复制 `update_selected_squad_display` 中的形状逻辑，使用新 `icon_size`
+      let (base_shape, offset) = match def.shape_tag {
+        UnitShape::Square => (@sprite.Shape::rect(icon_size, icon_size, 0.0), @math.Vec2D(-icon_size/2.0, -icon_size/2.0))
+        UnitShape::Triangle => (@sprite.Shape::triangle(icon_size, 0.0), @math.Vec2D(0.0, 0.0)) // 保持原偏移逻辑
+        UnitShape::Circle => (@sprite.Shape::circle(icon_size/2.0), @math.Vec2D(0.0, 0.0)) // 保持原偏移逻辑
+      }
+      
+      let colored_shape = @sprite.ColoredShape::new(base_shape, @sprite.DrawStyle::fill(color_str))
+      let icon_pos = @math.Vec2D(squad_start_x + i.to_double() * icon_spacing, squad_y)
+
+      let icon_entity = @system.Entity::new()
+      @position.positions.set(icon_entity, icon_pos)
+      let icon_sprite = @sprite.Sprite::from_shape(colored_shape, 15, layer=@sprite.RenderLayer::ui(), offset=offset)
+      @sprite.sprites.set(icon_entity, icon_sprite)
+      @ui.uis.set(icon_entity, @ui.Ui::new())
+      ui_entities.val.push(icon_entity)
+    }
+  }
+
+  // --- 返回按钮  ---
+  let back_button_entity = @system.Entity::new()
+  let back_pos = @math.Vec2D(MAP_WIDTH / 2.0, 600.0) // 【修改】Y 坐标下移到 600
+  @position.positions.set(back_button_entity, back_pos)
   let back_layout = @system.TextLayout::new("[ 返回主菜单 ]", font="32px mplus_hzk", color="white")
   let back_sprite = @sprite.Sprite::from_text_layout(back_layout, 15, layer=@sprite.RenderLayer::ui())
-  @sprite.sprites.set(back_button, back_sprite)
-  @ui.uis.set(back_button, @ui.Ui::new())
+  @sprite.sprites.set(back_button_entity, back_sprite)
+  @ui.uis.set(back_button_entity, @ui.Ui::new())
   let button_comp = Button::{
-    area: @math.Rect::{ position: @math.Vec2D(640.0, 450.0), size: @math.Vec2D(300.0, 50.0) },
+    area: @math.Rect::{ position: back_pos, size: @math.Vec2D(600.0, 50.0) }, // 【修改】使用 back_pos
     action: ButtonAction::SwitchState(UIState::MainMenu),
     normal_appearance: ButtonAppearance::FromTextLayout(back_layout),
     hover_appearance: ButtonAppearance::FromTextLayout(
@@ -1214,8 +1268,8 @@ fn setup_game_over_ui() -> Unit {
     is_hovered: false,
     category: UICategory::Normal
   }
-  buttons.set(back_button, button_comp)
-  ui_entities.val.push(back_button)
+  buttons.set(back_button_entity, button_comp)
+  ui_entities.val.push(back_button_entity)
 }
 fn update_grid_visibility() -> Unit {
   let start_x = 400.0

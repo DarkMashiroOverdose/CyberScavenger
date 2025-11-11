@@ -40,7 +40,7 @@ pub fn pause_toggle_system(_backend: &@system.Backend) -> Unit {
   let p_key_pressed = @system.is_just_pressed(@system.KeyP)
 
   // 检查鼠标左键点击
-  // 已经暂停时，检查鼠标点击来【恢复】
+  // 已经暂停时，检查鼠标点击来
   let mouse_clicked_to_resume = is_paused.val && @system.is_mouse_just_pressed(@system.MouseButton::Left)
 
   //  P 键 或 点击了鼠标
