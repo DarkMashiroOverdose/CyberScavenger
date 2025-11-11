@@ -34,8 +34,6 @@ let squad_guide_shown: Ref[Bool] = Ref::new(false)
 let current_guide_image_index: Ref[Int] = Ref::new(0)
 let is_guide_active: Ref[Bool] = Ref::new(false)
 
-let control_scheme_button: Ref[Option[@system.Entity]] = Ref::new(None)
-
 let active_synergies_display_entities: Ref[Array[@system.Entity]] = Ref::new([])
 pub enum ButtonAction {
   SwitchState(UIState)
@@ -48,6 +46,13 @@ pub enum ButtonAction {
   ToggleControlScheme
   SelectUpgrade(UpgradeType)
   ConfirmUpgradeSelection
+
+  ToggleSFX             // 切换音效 (开/关)
+  ToggleBGM             // 切换 BGM (开/关)
+  IncreaseSFXVolume     // 增加音效音量
+  DecreaseSFXVolume     // 减少音效音量
+  IncreaseBGMVolume     // 增加 BGM 音量
+  DecreaseBGMVolume     // 减少 BGM 音量
 } derive(Eq)
 
 pub struct Button {
@@ -545,47 +550,226 @@ pub fn update_wave_display_system(_backend: &@system.Backend) -> Unit {
   }
 }
 fn setup_settings_ui() -> Unit {
+  println("【UI】: 正在创建设置界面...")
 
+  let center_x = MAP_WIDTH / 2.0
+  let current_y = Ref::new(200.0) // 使用 Ref 方便垂直布局
+  let line_height = 100.0
+  let button_width = 100.0
+  let button_height = 100.0
+  let label_font = "48px mplus_hzk"
+  let value_font = "48px mplus_hzk"
+  let button_font = "bold 64px mplus_hzk"
+
+  let create_label = fn(text: String, y_pos: Double) -> Unit {
+    let entity = @system.Entity::new()
+    // 标签文本右对齐
+    let pos = @math.Vec2D(center_x - 200.0, y_pos)
+    @position.positions.set(entity, pos)
+    let layout = @system.TextLayout::new(text, font=label_font, color="white", max_width=Some(300.0), align=@system.TextAlign::right())
+    let sprite = @sprite.Sprite::from_text_layout(layout, 5, layer=@sprite.RenderLayer::ui(), offset=@math.Vec2D(-200.0, -12.0)) // 估算偏移
+    @sprite.sprites.set(entity, sprite)
+    @ui.uis.set(entity, @ui.Ui::new())
+    ui_entities.val.push(entity)
+  }
+
+  // --- BGM 开关 ---
+  create_label("背景音乐:", current_y.val)
+  let bgm_toggle_entity = @system.Entity::new()
+  let bgm_toggle_pos = @math.Vec2D(center_x, current_y.val)
+  @position.positions.set(bgm_toggle_entity, bgm_toggle_pos)
+  let bgm_text = if bgm_enabled.val { "开" } else { "关" } // 【依赖】bgm_enabled
+  let bgm_layout = @system.TextLayout::new(bgm_text, font=value_font, color="white", align=@system.TextAlign::center())
+  let bgm_sprite = @sprite.Sprite::from_text_layout(bgm_layout, 5, layer=@sprite.RenderLayer::ui(), offset=@math.Vec2D(-button_width/2.0, -12.0))
+  @sprite.sprites.set(bgm_toggle_entity, bgm_sprite)
+  @ui.uis.set(bgm_toggle_entity, @ui.Ui::new())
+  ui_entities.val.push(bgm_toggle_entity)
+  bgm_toggle_button_text.val = Some(bgm_toggle_entity) // 存储 Ref
+
+  let bgm_toggle_button = Button::{
+    area: @math.Rect::{ position: bgm_toggle_pos, size: @math.Vec2D(button_width, button_height) },
+    action: ButtonAction::ToggleBGM, // 【新增】
+    normal_appearance: ButtonAppearance::FromTextLayout(bgm_layout),
+    hover_appearance: ButtonAppearance::FromTextLayout(
+      @system.TextLayout::new(bgm_text, font=value_font, color="yellow", align=@system.TextAlign::center())
+    ),
+    is_hovered: false, category: UICategory::Normal
+  }
+  buttons.set(bgm_toggle_entity, bgm_toggle_button)
+  current_y.val += line_height
+
+  // --- BGM 音量 ---
+  create_label("BGM 音量:", current_y.val)
+  // 减号按钮
+  let bgm_dec_entity = @system.Entity::new()
+  let bgm_dec_pos = @math.Vec2D(center_x - 40.0, current_y.val)
+  @position.positions.set(bgm_dec_entity, bgm_dec_pos)
+  let bgm_dec_layout = @system.TextLayout::new("-", font=button_font, color="white", align=@system.TextAlign::center())
+  let bgm_dec_sprite = @sprite.Sprite::from_text_layout(bgm_dec_layout, 5, layer=@sprite.RenderLayer::ui(), offset=@math.Vec2D(-0, -0))
+  @sprite.sprites.set(bgm_dec_entity, bgm_dec_sprite)
+  @ui.uis.set(bgm_dec_entity, @ui.Ui::new())
+  ui_entities.val.push(bgm_dec_entity)
+  let bgm_dec_button = Button::{
+    area: @math.Rect::{ position: bgm_dec_pos, size: @math.Vec2D(60.0, 60.0) },
+    action: ButtonAction::DecreaseBGMVolume,
+    normal_appearance: ButtonAppearance::FromTextLayout(bgm_dec_layout),
+    hover_appearance: ButtonAppearance::FromTextLayout(
+      @system.TextLayout::new("-", font=button_font, color="yellow", align=@system.TextAlign::center())
+    ),
+    is_hovered: false, category: UICategory::Normal
+  }
+  buttons.set(bgm_dec_entity, bgm_dec_button)
+  // 音量标签
+  let bgm_vol_entity = @system.Entity::new()
+  let bgm_vol_pos = @math.Vec2D(center_x, current_y.val)
+  @position.positions.set(bgm_vol_entity, bgm_vol_pos)
+  let bgm_vol_text = "\{(bgm_volume.val * 100.0).to_int()}%" // 【依赖】bgm_volume
+  let bgm_vol_layout = @system.TextLayout::new(bgm_vol_text, font=value_font, color="white", max_width=Some(100.0), align=@system.TextAlign::center())
+  let bgm_vol_sprite = @sprite.Sprite::from_text_layout(bgm_vol_layout, 5, layer=@sprite.RenderLayer::ui(), offset=@math.Vec2D(-0, -12.0))
+  @sprite.sprites.set(bgm_vol_entity, bgm_vol_sprite)
+  @ui.uis.set(bgm_vol_entity, @ui.Ui::new())
+  ui_entities.val.push(bgm_vol_entity)
+  bgm_volume_display.val = Some(bgm_vol_entity) // 存储 Ref
+  // 加号按钮
+  let bgm_inc_entity = @system.Entity::new()
+  let bgm_inc_pos = @math.Vec2D(center_x + 120.0, current_y.val)
+  @position.positions.set(bgm_inc_entity, bgm_inc_pos)
+  let bgm_inc_layout = @system.TextLayout::new("+", font=button_font, color="white", align=@system.TextAlign::center())
+  let bgm_inc_sprite = @sprite.Sprite::from_text_layout(bgm_inc_layout, 5, layer=@sprite.RenderLayer::ui(), offset=@math.Vec2D(-0, -0))
+  @sprite.sprites.set(bgm_inc_entity, bgm_inc_sprite)
+  @ui.uis.set(bgm_inc_entity, @ui.Ui::new())
+  ui_entities.val.push(bgm_inc_entity)
+  let bgm_inc_button = Button::{
+    area: @math.Rect::{ position: bgm_inc_pos, size: @math.Vec2D(60.0, 60.0) },
+    action: ButtonAction::IncreaseBGMVolume, // 
+    normal_appearance: ButtonAppearance::FromTextLayout(bgm_inc_layout),
+    hover_appearance: ButtonAppearance::FromTextLayout(
+      @system.TextLayout::new("+", font=button_font, color="yellow", align=@system.TextAlign::center())
+    ),
+    is_hovered: false, category: UICategory::Normal
+  }
+  buttons.set(bgm_inc_entity, bgm_inc_button)
+  current_y.val += line_height
+
+  // --- SFX 开关 ---
+  create_label("音效(SFX):", current_y.val)
+  let sfx_toggle_entity = @system.Entity::new()
+  let sfx_toggle_pos = @math.Vec2D(center_x, current_y.val)
+  @position.positions.set(sfx_toggle_entity, sfx_toggle_pos)
+  let sfx_text = if sfx_enabled.val { "开" } else { "关" } // sfx_enabled
+  let sfx_layout = @system.TextLayout::new(sfx_text, font=value_font, color="white", align=@system.TextAlign::center())
+  let sfx_sprite = @sprite.Sprite::from_text_layout(sfx_layout, 5, layer=@sprite.RenderLayer::ui(), offset=@math.Vec2D(-button_width/2.0, -12.0))
+  @sprite.sprites.set(sfx_toggle_entity, sfx_sprite)
+  @ui.uis.set(sfx_toggle_entity, @ui.Ui::new())
+  ui_entities.val.push(sfx_toggle_entity)
+  sfx_toggle_button_text.val = Some(sfx_toggle_entity) // 存储 Ref
+  let sfx_toggle_button = Button::{
+    area: @math.Rect::{ position: sfx_toggle_pos, size: @math.Vec2D(button_width, button_height) },
+    action: ButtonAction::ToggleSFX, // 【新增】
+    normal_appearance: ButtonAppearance::FromTextLayout(sfx_layout),
+    hover_appearance: ButtonAppearance::FromTextLayout(
+      @system.TextLayout::new(sfx_text, font=value_font, color="yellow", align=@system.TextAlign::center())
+    ),
+    is_hovered: false, category: UICategory::Normal
+  }
+  buttons.set(sfx_toggle_entity, sfx_toggle_button)
+  current_y.val += line_height
+
+  // --- SFX 音量 --- 
+  create_label("SFX 音量:", current_y.val)
+  // 减号
+  let sfx_dec_entity = @system.Entity::new()
+  let sfx_dec_pos = @math.Vec2D(center_x - 40.0, current_y.val)
+  @position.positions.set(sfx_dec_entity, sfx_dec_pos)
+  let sfx_dec_layout = @system.TextLayout::new("-", font=button_font, color="white", align=@system.TextAlign::center())
+  let sfx_dec_sprite = @sprite.Sprite::from_text_layout(sfx_dec_layout, 5, layer=@sprite.RenderLayer::ui(), offset=@math.Vec2D(-0, -0))
+  @sprite.sprites.set(sfx_dec_entity, sfx_dec_sprite)
+  @ui.uis.set(sfx_dec_entity, @ui.Ui::new())
+  ui_entities.val.push(sfx_dec_entity)
+  let sfx_dec_button = Button::{
+    area: @math.Rect::{ position: sfx_dec_pos, size: @math.Vec2D(60.0, 60.0) },
+    action: ButtonAction::DecreaseSFXVolume, // 【新增】
+    normal_appearance: ButtonAppearance::FromTextLayout(sfx_dec_layout),
+    hover_appearance: ButtonAppearance::FromTextLayout(
+      @system.TextLayout::new("-", font=button_font, color="yellow", align=@system.TextAlign::center())
+    ),
+    is_hovered: false, category: UICategory::Normal
+  }
+  buttons.set(sfx_dec_entity, sfx_dec_button)
+  // 标签
+  let sfx_vol_entity = @system.Entity::new()
+  let sfx_vol_pos = @math.Vec2D(center_x, current_y.val)
+  @position.positions.set(sfx_vol_entity, sfx_vol_pos)
+  let sfx_vol_text = "\{(sfx_volume.val * 100.0).to_int()}%" // 【依赖】sfx_volume
+  let sfx_vol_layout = @system.TextLayout::new(sfx_vol_text, font=value_font, color="white", max_width=Some(100.0), align=@system.TextAlign::center())
+  let sfx_vol_sprite = @sprite.Sprite::from_text_layout(sfx_vol_layout, 5, layer=@sprite.RenderLayer::ui(), offset=@math.Vec2D(-0, -12.0))
+  @sprite.sprites.set(sfx_vol_entity, sfx_vol_sprite)
+  @ui.uis.set(sfx_vol_entity, @ui.Ui::new())
+  ui_entities.val.push(sfx_vol_entity)
+  sfx_volume_display.val = Some(sfx_vol_entity) // 存储 Ref
+  // 加号
+  let sfx_inc_entity = @system.Entity::new()
+  let sfx_inc_pos = @math.Vec2D(center_x + 120.0, current_y.val)
+  @position.positions.set(sfx_inc_entity, sfx_inc_pos)
+  let sfx_inc_layout = @system.TextLayout::new("+", font=button_font, color="white", align=@system.TextAlign::center())
+  let sfx_inc_sprite = @sprite.Sprite::from_text_layout(sfx_inc_layout, 5, layer=@sprite.RenderLayer::ui(), offset=@math.Vec2D(-0, -0))
+  @sprite.sprites.set(sfx_inc_entity, sfx_inc_sprite)
+  @ui.uis.set(sfx_inc_entity, @ui.Ui::new())
+  ui_entities.val.push(sfx_inc_entity)
+  let sfx_inc_button = Button::{
+    area: @math.Rect::{ position: sfx_inc_pos, size: @math.Vec2D(60.0, 60.0) },
+    action: ButtonAction::IncreaseSFXVolume,
+    normal_appearance: ButtonAppearance::FromTextLayout(sfx_inc_layout),
+    hover_appearance: ButtonAppearance::FromTextLayout(
+      @system.TextLayout::new("+", font=button_font, color="yellow", align=@system.TextAlign::center())
+    ),
+    is_hovered: false, category: UICategory::Normal
+  }
+  buttons.set(sfx_inc_entity, sfx_inc_button)
+  current_y.val += line_height
+
+  // ---操作模式---
+  create_label("操作模式:", current_y.val)
   let button_entity = @system.Entity::new()
-  let button_pos = @math.Vec2D(640.0, 300.0) 
+  let button_pos = @math.Vec2D(center_x, current_y.val) 
   @position.positions.set(button_entity, button_pos)
   
-  let initial_text = "操作模式: AD转向" // 初始文本保持不变
-  let layout = @system.TextLayout::new(initial_text, font="bold 24px mplus_hzk", color="white", align=@system.TextAlign::center())
-  let sprite = @sprite.Sprite::from_text_layout(layout, 5, layer=@sprite.RenderLayer::ui())
+  let initial_text = match current_control_scheme.val { 
+      ControlScheme::ADTurn => "AD转向"
+      ControlScheme::WASDDirect => "WASD全方向"
+      ControlScheme::Joystick => "虚拟摇杆"
+  }
+  let layout = @system.TextLayout::new(initial_text, font=value_font, color="white", max_width=Some(300.0), align=@system.TextAlign::center())
+  let sprite = @sprite.Sprite::from_text_layout(layout, 5, layer=@sprite.RenderLayer::ui(), offset=@math.Vec2D(-150.0, -12.0)) // 估算偏移
   @sprite.sprites.set(button_entity, sprite)
   
   let button_comp = Button::{
-    area: @math.Rect::{ position: button_pos, size: @math.Vec2D(300.0, 50.0) }, // 可以把按钮区域改大一点
+    area: @math.Rect::{ position: button_pos, size: @math.Vec2D(300.0, 50.0) },
     action: ButtonAction::ToggleControlScheme,
     normal_appearance: ButtonAppearance::FromTextLayout(layout),
     hover_appearance: ButtonAppearance::FromTextLayout(
-      @system.TextLayout::new(initial_text, font="bold 24px mplus_hzk", color="yellow", align=@system.TextAlign::center())
+      @system.TextLayout::new(initial_text, font=value_font, color="yellow", max_width=Some(300.0), align=@system.TextAlign::center())
     ),
-    is_hovered: false,
-    category: UICategory::Normal
+    is_hovered: false, category: UICategory::Normal
   }
   buttons.set(button_entity, button_comp)
   ui_entities.val.push(button_entity)
-  control_scheme_button.val = Some(button_entity)
+  control_scheme_button.val = Some(button_entity) // 存储 Ref
+  current_y.val += line_height
 
-
+  // --- 返回按钮 ---
   let back_button_entity = @system.Entity::new()
-  @position.positions.set(back_button_entity, @math.Vec2D(400.0, 450.0))
-  let back_text = @sprite.Text::new("---WIP---[Back to Main Menu]", font="32px mplus_hzk")
-  let back_sprite = @sprite.Sprite::from_text(back_text, 1, layer=@sprite.RenderLayer::ui())
+  let back_pos = @math.Vec2D(center_x, current_y.val) // 往下移一点
+  @position.positions.set(back_button_entity, back_pos)
+  let back_layout = @system.TextLayout::new("[ 返回主菜单 ]", font="32px mplus_hzk", color="white", align=@system.TextAlign::center())
+  let back_sprite = @sprite.Sprite::from_text_layout(back_layout, 1, layer=@sprite.RenderLayer::ui(), offset=@math.Vec2D(-150.0, -16.0))
   @sprite.sprites.set(back_button_entity, back_sprite)
   @ui.uis.set(back_button_entity, @ui.Ui::new())
   let back_button_component = Button::{
-    area: @math.Rect::{ 
-      position: @math.Vec2D(400.0, 425.0), 
-      size: @math.Vec2D(600.0, 50.0) 
-    },
-    normal_appearance: ButtonAppearance::FromText(
-      back_text
-    ),
-    hover_appearance: ButtonAppearance::FromText(
-      back_text
+    area: @math.Rect::{ position: back_pos, size: @math.Vec2D(300.0, 50.0) },
+    normal_appearance: ButtonAppearance::FromTextLayout(back_layout),
+    hover_appearance: ButtonAppearance::FromTextLayout(
+      @system.TextLayout::new("[ 返回主菜单 ]", font="32px mplus_hzk", color="yellow", align=@system.TextAlign::center())
     ),
     is_hovered: false, 
     action: ButtonAction::SwitchState(UIState::MainMenu),
@@ -594,13 +778,18 @@ fn setup_settings_ui() -> Unit {
   buttons.set(back_button_entity, back_button_component)
   ui_entities.val.push(back_button_entity)
 }
+let control_scheme_button: Ref[Option[@system.Entity]] = Ref::new(None)
+let sfx_toggle_button_text: Ref[Option[@system.Entity]] = Ref::new(None)
+let bgm_toggle_button_text: Ref[Option[@system.Entity]] = Ref::new(None)
+let sfx_volume_display: Ref[Option[@system.Entity]] = Ref::new(None)
+let bgm_volume_display: Ref[Option[@system.Entity]] = Ref::new(None)
 fn update_control_scheme_display() -> Unit {
   if control_scheme_button.val is Some(entity) {
     if @sprite.sprites.get(entity) is Some(old_sprite) {
       let current_text = match current_control_scheme.val {
-        ControlScheme::ADTurn => "操作模式: AD转向"
-        ControlScheme::WASDDirect => "操作模式: WASD全方向"
-        ControlScheme::Joystick => "操作模式: 虚拟摇杆"
+        ControlScheme::ADTurn => "AD转向"
+        ControlScheme::WASDDirect => "WASD全方向"
+        ControlScheme::Joystick => "虚拟摇杆"
       }
       if old_sprite.sprite_type is @sprite.SpriteType::TextLayout(old_layout) {
         if old_layout.content != current_text {
@@ -614,7 +803,7 @@ fn update_control_scheme_display() -> Unit {
             line_height=old_layout.line_height
           )
           
-          let new_sprite = @sprite.Sprite::from_text_layout(new_layout, old_sprite.zindex, layer=old_sprite.layer)
+          let new_sprite = @sprite.Sprite::from_text_layout(new_layout, old_sprite.zindex, layer=old_sprite.layer,offset=@math.Vec2D(-150.0, -12.0))
           @sprite.sprites.set(entity, new_sprite)
 
           if buttons.get(entity) is Some(button) {
@@ -637,6 +826,24 @@ fn update_control_scheme_display() -> Unit {
       }
     }
   }
+}
+fn update_settings_display() -> Unit {
+  
+  // 更新 BGM 切换按钮的文本
+  let bgm_text = if bgm_enabled.val { "开" } else { "关" }
+  update_text_layout_if_changed(bgm_toggle_button_text.val, bgm_text, "yellow")
+
+  // 更新 BGM 音量标签的文本
+  let bgm_vol_text = "\{(bgm_volume.val * 100.0).to_int()}%"
+  update_text_layout_if_changed(bgm_volume_display.val, bgm_vol_text, "white") // 标签悬停不变色
+
+  // 更新 SFX 切换按钮的文本
+  let sfx_text = if sfx_enabled.val { "开" } else { "关" }
+  update_text_layout_if_changed(sfx_toggle_button_text.val, sfx_text, "yellow")
+
+  // 更新 SFX 音量标签的文本
+  let sfx_vol_text = "\{(sfx_volume.val * 100.0).to_int()}%"
+  update_text_layout_if_changed(sfx_volume_display.val, sfx_vol_text, "white")
 }
 fn setup_squad_builder_ui() -> Unit {
   if !squad_guide_shown.val {
@@ -1601,6 +1808,7 @@ pub fn update_ui_system(_backend: &@system.Backend) -> Unit {
   
   if current_ui_state.val == UIState::Settings {
     update_control_scheme_display()
+    update_settings_display()
   }
 }
 
@@ -1740,20 +1948,22 @@ pub fn button_system(backend: &@system.Backend) -> Unit {
               println("【智能切换】: 检测到首次交互为触摸，自动切换到摇杆模式。")
               current_control_scheme.val = ControlScheme::Joystick
             }
-          if !audio_unlocked.val {
-            println("【音频】: 首次交互，解锁并播放BGM...")
-            audio_unlocked.val = true
-            let handle = @audio.play_audio(
-              backend,
-              "assets/sfx/inst.mp3",
-              volume=0.1,
-              loop_=true,
-            )
-            bgm_handle.val = Some(handle)
-            cleanup_ui()
-            setup_main_menu_ui()
-          }
-          return 
+            if !audio_unlocked.val {
+              println("【音频】: 首次交互，解锁并播放BGM...")
+              audio_unlocked.val = true
+              
+              if bgm_enabled.val { // 检查 BGM 是否默认开启
+                let bgm = @canvas.Audio::new("assets/sfx/inst.mp3")
+                bgm.set_volume(bgm_volume.val)
+                bgm.set_loop(true)
+                bgm.play()
+                bgm_audio_object.val = Some(bgm)
+              }
+              
+              cleanup_ui()
+              setup_main_menu_ui()
+            }
+            return 
         }
         ButtonAction::NextGuidePage => {
           if current_ui_state.val == UIState::SquadBuilder && !squad_guide_shown.val {
@@ -1842,6 +2052,44 @@ pub fn button_system(backend: &@system.Backend) -> Unit {
              }
              return
           }
+          ButtonAction::ToggleBGM => {
+            toggle_bgm()
+            return
+          }
+
+          ButtonAction::ToggleSFX => {
+            sfx_enabled.val = !sfx_enabled.val
+            println("【音频】: SFX 切换为 \{sfx_enabled.val}")
+            return
+          }
+
+          ButtonAction::DecreaseBGMVolume => {
+            let new_vol = max_double(0.0, bgm_volume.val - 0.1)
+            bgm_volume.val = new_vol
+            update_bgm_volume()
+            return
+          }
+
+          ButtonAction::IncreaseBGMVolume => {
+            let new_vol = min_double(1.0, bgm_volume.val + 0.1)
+            bgm_volume.val = new_vol
+            update_bgm_volume()
+            return
+          }
+
+          ButtonAction::DecreaseSFXVolume => {
+            let new_vol = max_double(0.0, sfx_volume.val - 0.1) 
+            sfx_volume.val = new_vol
+            update_all_sfx_volume() 
+            return
+          }
+
+          ButtonAction::IncreaseSFXVolume => {
+            let new_vol = min_double(1.0, sfx_volume.val + 0.1)
+            sfx_volume.val = new_vol
+            update_all_sfx_volume()
+            return
+          }
       }
         
         return
@@ -1850,4 +2098,52 @@ pub fn button_system(backend: &@system.Backend) -> Unit {
   }
 }
 
-        
+fn update_text_layout_if_changed(
+  entity_opt: Option[@system.Entity],
+  new_text: String,
+  hover_color: String, // 允许指定悬停颜色
+) -> Unit {
+  if entity_opt is Some(entity) {
+    if @sprite.sprites.get(entity) is Some(old_sprite) {
+      if old_sprite.sprite_type is @sprite.SpriteType::TextLayout(old_layout) {
+        // 检查文本内容是否真的改变了
+        if old_layout.content != new_text {
+          // 创建新的 TextLayout
+          let new_layout = @system.TextLayout::new(
+            new_text,
+            font=old_layout.font,
+            color=old_layout.color,
+            max_width=old_layout.max_width,
+            align=old_layout.align,
+            line_height=old_layout.line_height
+          )
+          // 创建新的 Sprite
+          let new_sprite = @sprite.Sprite::from_text_layout(
+            new_layout,
+            old_sprite.zindex,
+            layer=old_sprite.layer,
+            offset=old_sprite.offset
+          )
+          @sprite.sprites.set(entity, new_sprite)
+          
+          // 同时更新按钮的外观定义，以便悬停时也显示新文本
+          if buttons.get(entity) is Some(button) {
+              let new_hover_layout = @system.TextLayout::new(
+                new_text, // 使用新文本
+                font=old_layout.font,
+                color=hover_color, // 使用指定的悬停颜色
+                max_width=old_layout.max_width,
+                align=old_layout.align,
+                line_height=old_layout.line_height
+              )
+              buttons.set(entity, {
+                  ..button,
+                  normal_appearance: ButtonAppearance::FromTextLayout(new_layout),
+                  hover_appearance: ButtonAppearance::FromTextLayout(new_hover_layout),
+              })
+          }
+        } // if content changed
+      } // if TextLayout
+    } // if Some(sprite)
+  } // if Some(entity)
+}
