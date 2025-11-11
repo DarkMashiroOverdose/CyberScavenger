@@ -11,7 +11,6 @@ fn main {
     
     // 注册UI逻辑更新
     .add_system(button_system, schedule=@system.Schedule::Update)
-    .add_system(joystick_system, schedule=@system.Schedule::Update)
     .add_system(update_ui_system, schedule=@system.Schedule::Update)
     .add_system(update_pause_overlay_system, schedule=@system.Schedule::Update)
     //游戏运行
@@ -32,34 +31,17 @@ fn main {
 }
 let is_paused: Ref[Bool] = Ref::new(false)
 
-// --- 暂停控制系统 ---
-
 // 这个系统专门监听暂停键，并且不应该被暂停
 pub fn pause_toggle_system(_backend: &@system.Backend) -> Unit {
-  // 检查 'P' 键
-  let p_key_pressed = @system.is_just_pressed(@system.KeyP)
-
-  // 检查鼠标左键点击
-  // 已经暂停时，检查鼠标点击来
-  let mouse_clicked_to_resume = is_paused.val && @system.is_mouse_just_pressed(@system.MouseButton::Left)
-
-  //  P 键 或 点击了鼠标
-  if p_key_pressed || mouse_clicked_to_resume {
-    // 对 is_paused 的值进行取反
+  // 只检查 'P' 键
+  if @system.is_just_pressed(@system.KeyP) {
     let was_paused = is_paused.val
-    is_paused.val = !is_paused.val
+    is_paused.val = !is_paused.val // 切换状态
     
-    // 根据新状态打印日志
     if is_paused.val {
-      println("[Game] Paused")
-    } else {
-       if was_paused {
-          if p_key_pressed {
-             println("[Game] Resumed (via key)")
-          } else {
-             println("[Game] Resumed (via click)")
-          }
-       }
+      println("[Game] Paused (via key)")
+    } else if was_paused {
+      println("[Game] Resumed (via key)")
     }
   }
 }
@@ -88,6 +70,7 @@ pub fn update_game_world_system(backend: &@system.Backend) -> Unit {
   // 玩家输入，决定火车头的移动方向
   player_control_system(backend)
   stamina_system(backend)
+  joystick_system(backend)
   dash_touch_system(backend)
   wall_bounce_system(backend, MAP_WIDTH, MAP_HEIGHT)
   // AI输入，决定敌人的移动方向

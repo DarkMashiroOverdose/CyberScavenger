@@ -441,7 +441,8 @@ let wave_display_entity: Ref[Option[@system.Entity]] = Ref::new(None)
 let tutorial_text_entity: Ref[Option[@system.Entity]] = Ref::new(None)
 let pause_overlay_bg: Ref[Option[@system.Entity]] = Ref::new(None)
 let pause_text_label: Ref[Option[@system.Entity]] = Ref::new(None)
-let pause_resume_button: Ref[Option[@system.Entity]] = Ref::new(None)
+let ingame_pause_button: Ref[Option[@system.Entity]] = Ref::new(None) // 存储 [ || ] 按钮
+let fullscreen_resume_button: Ref[Option[@system.Entity]] = Ref::new(None) // 存储全屏恢复按钮
 fn setup_ingame_hud() -> Unit {
   let score_label = @system.Entity::new()
   @position.positions.set(score_label, @math.Vec2D(100.0, 70.0))
@@ -528,6 +529,7 @@ fn setup_ingame_hud() -> Unit {
   @sprite.sprites.set(pause_button_entity, pause_sprite)
   @ui.uis.set(pause_button_entity, @ui.Ui::new())
   ui_entities.val.push(pause_button_entity) // 添加到清理列表
+  ingame_pause_button.val = Some(pause_button_entity)
 
   let pause_button_comp = Button::{
     area: @math.Rect::{ position: pause_pos, size: @math.Vec2D(60.0, 65.0) }, // 按钮热区
@@ -577,35 +579,91 @@ fn setup_ingame_hud() -> Unit {
   ui_entities.val.push(text_label)
   pause_text_label.val = Some(text_label)
   
+  let resume_button_entity = @system.Entity::new()
+  let resume_pos = @math.Vec2D(MAP_WIDTH / 2.0, MAP_HEIGHT / 2.0) // 放在屏幕中心
+  @position.positions.set(resume_button_entity, resume_pos)
+
+  // 这个按钮没有 Sprite，它是透明的，但会捕获点击
+  let resume_button_comp = Button::{
+    area: @math.Rect::{ position: resume_pos, size: @math.Vec2D(MAP_WIDTH, MAP_HEIGHT) }, // 覆盖全屏
+    action: ButtonAction::TogglePause, 
+    normal_appearance: ButtonAppearance::FromPicture("", @math.Vec2D(0.0, 0.0)), // 透明
+    hover_appearance: ButtonAppearance::FromPicture("", @math.Vec2D(0.0, 0.0)), // 透明
+    is_hovered: false,
+    category: UICategory::Normal
+  }
+  buttons.set(resume_button_entity, resume_button_comp)
+  @ui.uis.set(resume_button_entity, @ui.Ui::new()) // 确保 Selene 知道它
+  ui_entities.val.push(resume_button_entity) // 加入清理列表
+  fullscreen_resume_button.val = Some(resume_button_entity) // 存储 Ref
+
+  let transparent_shape = @sprite.ColoredShape::new(@sprite.Shape::rect(0.0,0.0,0.0), @sprite.DrawStyle::fill("transparent"))
+  let resume_sprite = @sprite.Sprite::from_shape(transparent_shape, 702, layer=@sprite.RenderLayer::ui()) // Z 轴在暂停文字之上
+  resume_sprite.visible = false 
+  @sprite.sprites.set(resume_button_entity, resume_sprite)
 }
 
 /// 每帧检查暂停状态，并更新暂停覆盖层的可见性
 pub fn update_pause_overlay_system(_backend: &@system.Backend) -> Unit {
+  // 检查是否在游戏中，如果不在，确保所有暂停UI都隐藏
+  guard current_ui_state.val == UIState::InGame else {
+    // 隐藏暂停背景
+    if pause_overlay_bg.val is Some(entity) {
+      match @sprite.sprites.get(entity) {
+        Some(sprite) => sprite.visible = false
+        None => ()
+      }
+    }
+    // 隐藏暂停文字
+    if pause_text_label.val is Some(entity) {
+      match @sprite.sprites.get(entity) {
+        Some(sprite) => sprite.visible = false
+        None => ()
+      }
+    }
+    // 隐藏全屏恢复按钮
+    if fullscreen_resume_button.val is Some(entity) {
+      match @sprite.sprites.get(entity) {
+        Some(sprite) => sprite.visible = false
+        None => ()
+      }
+    }
+    // 隐藏游戏内暂停按钮
+    if ingame_pause_button.val is Some(entity) {
+      match @sprite.sprites.get(entity) {
+        Some(sprite) => sprite.visible = false
+        None => ()
+      }
+    }
+    return
+  }
 
   // 获取当前的暂停状态
   let is_game_paused = is_paused.val
 
-  // 更新背景的可见性
+  // 根据暂停状态，更新【暂停界面
   if pause_overlay_bg.val is Some(entity) {
     match @sprite.sprites.get(entity) {
-      Some(sprite) => {
-        // 仅在状态不一致时才修改，避免每帧都设置
-        if sprite.visible != is_game_paused {
-          sprite.visible = is_game_paused
-        }
-      }
+      Some(sprite) => if sprite.visible != is_game_paused { sprite.visible = is_game_paused }
+      None => ()
+    }
+  }
+  if pause_text_label.val is Some(entity) {
+    match @sprite.sprites.get(entity) {
+      Some(sprite) => if sprite.visible != is_game_paused { sprite.visible = is_game_paused }
+      None => ()
+    }
+  }
+  if fullscreen_resume_button.val is Some(entity) {
+    match @sprite.sprites.get(entity) {
+      Some(sprite) => if sprite.visible != is_game_paused { sprite.visible = is_game_paused }
       None => ()
     }
   }
 
-  // 更新文本的可见性
-  if pause_text_label.val is Some(entity) {
+  if ingame_pause_button.val is Some(entity) {
     match @sprite.sprites.get(entity) {
-      Some(sprite) => {
-        if sprite.visible != is_game_paused {
-          sprite.visible = is_game_paused
-        }
-      }
+      Some(sprite) => if sprite.visible != !is_game_paused { sprite.visible = !is_game_paused } // 【注意】这里是 !is_game_paused
       None => ()
     }
   }
