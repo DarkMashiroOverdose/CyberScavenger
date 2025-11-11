@@ -54,6 +54,8 @@ pub enum ButtonAction {
   DecreaseSFXVolume     // 减少音效音量
   IncreaseBGMVolume     // 增加 BGM 音量
   DecreaseBGMVolume     // 减少 BGM 音量
+
+  TogglePause //游戏内暂停
 } derive(Eq)
 
 pub struct Button {
@@ -437,6 +439,9 @@ fn setup_main_menu_ui() -> Unit {
 let score_display_entity: Ref[Option[@system.Entity]] = Ref::new(None)
 let wave_display_entity: Ref[Option[@system.Entity]] = Ref::new(None)
 let tutorial_text_entity: Ref[Option[@system.Entity]] = Ref::new(None)
+let pause_overlay_bg: Ref[Option[@system.Entity]] = Ref::new(None)
+let pause_text_label: Ref[Option[@system.Entity]] = Ref::new(None)
+let pause_resume_button: Ref[Option[@system.Entity]] = Ref::new(None)
 fn setup_ingame_hud() -> Unit {
   let score_label = @system.Entity::new()
   @position.positions.set(score_label, @math.Vec2D(100.0, 70.0))
@@ -498,7 +503,114 @@ fn setup_ingame_hud() -> Unit {
   if current_control_scheme.val == ControlScheme::Joystick {  
     create_tutorial_joystick_visuals()
   }
+
+  let pause_button_entity = @system.Entity::new()
+  // 放在右上角
+  let pause_pos = @math.Vec2D(MAP_WIDTH - 130.0, 200.0) 
+  @position.positions.set(pause_button_entity, pause_pos)
+
+  let pause_text = "||" // 暂停图标
+  let pause_layout = @system.TextLayout::new(
+    pause_text,
+    font="bold 60px mplus_hzk", 
+    color="white",
+    align=@system.TextAlign::center()
+  )
+  let pause_hover_layout = @system.TextLayout::new(
+    pause_text,
+    font="bold 60px mplus_hzk", 
+    color="yellow",
+    align=@system.TextAlign::center()
+  )
+
+  let pause_sprite = @sprite.Sprite::from_text_layout(pause_layout, 100, layer=@sprite.RenderLayer::ui())
+  
+  @sprite.sprites.set(pause_button_entity, pause_sprite)
+  @ui.uis.set(pause_button_entity, @ui.Ui::new())
+  ui_entities.val.push(pause_button_entity) // 添加到清理列表
+
+  let pause_button_comp = Button::{
+    area: @math.Rect::{ position: pause_pos, size: @math.Vec2D(60.0, 65.0) }, // 按钮热区
+    action: ButtonAction::TogglePause, // 设置动作为 TogglePause
+    normal_appearance: ButtonAppearance::FromTextLayout(pause_layout),
+    hover_appearance: ButtonAppearance::FromTextLayout(pause_hover_layout),
+    is_hovered: false, 
+    category: UICategory::Normal // 属于普通 UI
+  }
+
+
+  buttons.set(pause_button_entity, pause_button_comp)
+  let overlay_bg = @system.Entity::new()
+  @position.positions.set(overlay_bg, @math.Vec2D(0.0, 0.0))
+  let background_shape = @sprite.ColoredShape::new(
+    @sprite.Shape::rect(MAP_WIDTH + 10, MAP_HEIGHT + 10, 0.0), // 确保覆盖全屏
+    @sprite.DrawStyle::fill("rgba(0, 0, 0, 0.5)") // 半透明黑色
+  )
+  let overlay_sprite = @sprite.Sprite::from_shape(background_shape, 700, layer=@sprite.RenderLayer::ui())
+  
+  overlay_sprite.visible = false // 默认隐藏
+  
+  @sprite.sprites.set(overlay_bg, overlay_sprite)
+  @ui.uis.set(overlay_bg, @ui.Ui::new())
+  ui_entities.val.push(overlay_bg) // 加入清理列表
+  pause_overlay_bg.val = Some(overlay_bg) // 存储 Ref
+
+  // 创建"已暂停"文本
+  let text_label = @system.Entity::new()
+  let text_pos = @math.Vec2D(MAP_WIDTH / 2.0, MAP_HEIGHT / 2.0) // 屏幕中央
+  @position.positions.set(text_label, text_pos)
+  let text_layout = @system.TextLayout::new(
+    "(点击任意位置或按 P 键取消暂停)", // 更新提示文本
+    font="bold 48px mplus_hzk", 
+    color="white",
+    align=@system.TextAlign::center(),
+    line_height= 60.0
+  )
+  // 估算偏移，使文本居中
+  let text_offset = @math.Vec2D(-400.0, -60.0) //
+  let text_sprite = @sprite.Sprite::from_text_layout(text_layout, 701, layer=@sprite.RenderLayer::ui(), offset=text_offset)
+  
+  text_sprite.visible = false // 默认隐藏
+  
+  @sprite.sprites.set(text_label, text_sprite)
+  @ui.uis.set(text_label, @ui.Ui::new())
+  ui_entities.val.push(text_label)
+  pause_text_label.val = Some(text_label)
+  
 }
+
+/// 每帧检查暂停状态，并更新暂停覆盖层的可见性
+pub fn update_pause_overlay_system(_backend: &@system.Backend) -> Unit {
+
+  // 获取当前的暂停状态
+  let is_game_paused = is_paused.val
+
+  // 更新背景的可见性
+  if pause_overlay_bg.val is Some(entity) {
+    match @sprite.sprites.get(entity) {
+      Some(sprite) => {
+        // 仅在状态不一致时才修改，避免每帧都设置
+        if sprite.visible != is_game_paused {
+          sprite.visible = is_game_paused
+        }
+      }
+      None => ()
+    }
+  }
+
+  // 更新文本的可见性
+  if pause_text_label.val is Some(entity) {
+    match @sprite.sprites.get(entity) {
+      Some(sprite) => {
+        if sprite.visible != is_game_paused {
+          sprite.visible = is_game_paused
+        }
+      }
+      None => ()
+    }
+  }
+}
+
 pub fn update_wave_display_system(_backend: &@system.Backend) -> Unit {
   if current_ui_state.val == UIState::InGame {
     if wave_display_entity.val is Some(entity) {
@@ -2222,6 +2334,16 @@ pub fn button_system(backend: &@system.Backend) -> Unit {
             sfx_volume.val = new_vol
             update_all_sfx_volume()
             return
+          }
+          ButtonAction::TogglePause => {
+            is_paused.val = !is_paused.val // 切换暂停状态
+            
+            if is_paused.val {
+              println("[Game] Paused (via button)")
+            } else {
+              println("[Game] Resumed (via button)")
+            }
+            return 
           }
       }
         

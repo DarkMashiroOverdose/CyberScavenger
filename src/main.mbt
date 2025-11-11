@@ -13,6 +13,7 @@ fn main {
     .add_system(button_system, schedule=@system.Schedule::Update)
     .add_system(joystick_system, schedule=@system.Schedule::Update)
     .add_system(update_ui_system, schedule=@system.Schedule::Update)
+    .add_system(update_pause_overlay_system, schedule=@system.Schedule::Update)
     //游戏运行
     
     .add_system(update_logic_system, schedule=@system.Schedule::Update)
@@ -35,15 +36,30 @@ let is_paused: Ref[Bool] = Ref::new(false)
 
 // 这个系统专门监听暂停键，并且不应该被暂停
 pub fn pause_toggle_system(_backend: &@system.Backend) -> Unit {
-  // 检查玩家是否“刚刚按下”了 P 键
-  if @system.is_just_pressed(@system.KeyP) {
-    // 对 is_paused 的值进行取反 (true -> false, false -> true)
+  // 检查 'P' 键
+  let p_key_pressed = @system.is_just_pressed(@system.KeyP)
+
+  // 检查鼠标左键点击
+  // 已经暂停时，检查鼠标点击来【恢复】
+  let mouse_clicked_to_resume = is_paused.val && @system.is_mouse_just_pressed(@system.MouseButton::Left)
+
+  //  P 键 或 点击了鼠标
+  if p_key_pressed || mouse_clicked_to_resume {
+    // 对 is_paused 的值进行取反
+    let was_paused = is_paused.val
     is_paused.val = !is_paused.val
     
+    // 根据新状态打印日志
     if is_paused.val {
       println("[Game] Paused")
     } else {
-      println("[Game] Resumed")
+       if was_paused {
+          if p_key_pressed {
+             println("[Game] Resumed (via key)")
+          } else {
+             println("[Game] Resumed (via click)")
+          }
+       }
     }
   }
 }
